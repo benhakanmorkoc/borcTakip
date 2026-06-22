@@ -51,7 +51,7 @@ function PeriodChart({ data }) {
         <Legend wrapperStyle={{ fontSize: '10px', paddingTop: '8px' }} iconSize={8} />
         <ReferenceLine y={0} stroke="#e5e7eb" />
         <Bar dataKey="gelir" name="Gelir" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={36} />
-        <Bar dataKey="odenecek" name="Ödenecek" fill="#ef4444" radius={[4, 4, 0, 0]} maxBarSize={36} />
+        <Bar dataKey="giderler" name="Gider" fill="#ef4444" radius={[4, 4, 0, 0]} maxBarSize={36} />
       </BarChart>
     </ResponsiveContainer>
   )
