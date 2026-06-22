@@ -61,7 +61,7 @@ function paidLabel(card) {
 
 export function buildHomeReport(state, yearMonth, cariAy = currentYearMonth()) {
   const projection = buildProjectedState(state, yearMonth, cariAy)
-  const report = buildMonthlyReport(projection.state, yearMonth, yearMonth)
+  const report = buildMonthlyReport(projection.state, yearMonth, cariAy)
   return {
     ...report,
     isProjected: projection.isProjected,
@@ -70,7 +70,8 @@ export function buildHomeReport(state, yearMonth, cariAy = currentYearMonth()) {
   }
 }
 
-export function buildMonthlyReport(state, yearMonth, referenceMonth = yearMonth) {
+/** referenceMonth = cari ay (ödeme durumu yalnızca cari ay için geçerlidir) */
+export function buildMonthlyReport(state, yearMonth, referenceMonth = currentYearMonth()) {
   const creditCardItems = state.creditCards
     .filter((c) => c.dueMonth === yearMonth)
     .map((c) => {

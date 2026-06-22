@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { useFinance } from '../context/FinanceContext'
 import { buildMonthlyReport } from '../lib/report'
-import { formatDate, formatMoney } from '../lib/format'
+import { formatDate, formatMoney, currentYearMonth } from '../lib/format'
 import MonthPicker from '../components/MonthPicker'
 import { TrendingDown, TrendingUp, Scale } from 'lucide-react'
 
@@ -76,9 +76,10 @@ function Section({ title, items, emptyText, variant }) {
 
 export default function Dashboard() {
   const { state, selectedMonth, setSelectedMonth } = useFinance()
+  const cariAy = currentYearMonth()
   const report = useMemo(
-    () => buildMonthlyReport(state, selectedMonth, selectedMonth),
-    [state, selectedMonth]
+    () => buildMonthlyReport(state, selectedMonth, cariAy),
+    [state, selectedMonth, cariAy]
   )
 
   const balanceTone = report.balance >= 0 ? 'positive' : 'negative'

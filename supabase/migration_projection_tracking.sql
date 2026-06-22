@@ -14,3 +14,10 @@ create table if not exists projection_dismissals (
   created_at timestamptz default now(),
   unique (user_id, kind, target_month, source_id)
 );
+
+alter table projection_dismissals enable row level security;
+
+create policy "projection_dismissals_select_own" on projection_dismissals for select using (auth.uid() = user_id);
+create policy "projection_dismissals_insert_own" on projection_dismissals for insert with check (auth.uid() = user_id);
+create policy "projection_dismissals_update_own" on projection_dismissals for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy "projection_dismissals_delete_own" on projection_dismissals for delete using (auth.uid() = user_id);

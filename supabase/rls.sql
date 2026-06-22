@@ -30,3 +30,10 @@ create policy "custom_types_select_own" on custom_types for select using (auth.u
 create policy "custom_types_insert_own" on custom_types for insert with check (auth.uid() = user_id);
 create policy "custom_types_update_own" on custom_types for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create policy "custom_types_delete_own" on custom_types for delete using (auth.uid() = user_id);
+
+alter table projection_dismissals enable row level security;
+
+create policy "projection_dismissals_select_own" on projection_dismissals for select using (auth.uid() = user_id);
+create policy "projection_dismissals_insert_own" on projection_dismissals for insert with check (auth.uid() = user_id);
+create policy "projection_dismissals_update_own" on projection_dismissals for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create policy "projection_dismissals_delete_own" on projection_dismissals for delete using (auth.uid() = user_id);

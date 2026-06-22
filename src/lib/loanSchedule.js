@@ -1,4 +1,4 @@
-import { shiftYearMonth } from './format'
+import { compareYearMonth, currentYearMonth, shiftYearMonth } from './format'
 import { createId } from './storage'
 import {
   getLoanEndMonth,
@@ -53,9 +53,12 @@ function monthDiffFromView(from, to) {
 }
 
 /** Seçili ayın kendi taksiti (ileri tabloda değil, özet için) */
-function buildLoanCurrentRow(loan, viewMonth, referenceMonth) {
+function buildLoanCurrentRow(loan, viewMonth, cariAy = currentYearMonth()) {
   if (!isLoanActiveInMonth(loan, viewMonth)) return null
-  const paid = viewMonth === referenceMonth && Boolean(loan.installmentPaid)
+  const paid =
+    compareYearMonth(viewMonth, cariAy) <= 0 &&
+    viewMonth === cariAy &&
+    Boolean(loan.installmentPaid)
   return {
     id: `current-${loan.id}-${viewMonth}`,
     loanId: loan.id,
@@ -69,7 +72,7 @@ function buildLoanCurrentRow(loan, viewMonth, referenceMonth) {
   }
 }
 
-function normalizeManualInstallments(loan) {
+function normalizeManualInstallments(loan, cariAy = currentYearMonth()) {
   return (loan.futureInstallments || [])
     .filter((row) => isLoanActiveInMonth(loan, row.month) || compare(row.month, getLoanEndMonth(loan)) <= 0)
     .map((row) => ({
@@ -78,7 +81,7 @@ function normalizeManualInstallments(loan) {
       bankName: loan.bankName,
       month: row.month,
       amount: Number(row.amount) || 0,
-      paid: Boolean(row.paid),
+      paid: compareYearMonth(row.month, cariAy) > 0 ? false : Boolean(row.paid),
       note: row.note || '',
       source: 'manual',
       paymentsLeft: getPaymentsRemaining(loan, row.month),
@@ -97,17 +100,17 @@ function mergeScheduleRows(autoRows, manualRows) {
   return [...byMonth.values()].sort((a, b) => a.month.localeCompare(b.month))
 }
 
-export function buildLoanFullSchedule(loan, viewMonth, referenceMonth = viewMonth) {
-  const current = buildLoanCurrentRow(loan, viewMonth, referenceMonth)
+export function buildLoanFullSchedule(loan, viewMonth, cariAy = currentYearMonth()) {
+  const current = buildLoanCurrentRow(loan, viewMonth, cariAy)
   const forward = buildLoanAutoSchedule(loan, viewMonth)
-  const manual = normalizeManualInstallments(loan)
+  const manual = normalizeManualInstallments(loan, cariAy)
   const merged = mergeScheduleRows(forward, manual)
   return current ? [current, ...merged] : merged
 }
 
-export function buildAllLoanSchedules(loans, viewMonth, referenceMonth = viewMonth) {
+export function buildAllLoanSchedules(loans, viewMonth, cariAy = currentYearMonth()) {
   return loans
-    .flatMap((loan) => buildLoanFullSchedule(loan, viewMonth, referenceMonth))
+    .flatMap((loan) => buildLoanFullSchedule(loan, viewMonth, cariAy))
     .sort((a, b) => a.month.localeCompare(b.month) || a.bankName.localeCompare(b.bankName))
 }
 

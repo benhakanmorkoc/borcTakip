@@ -8,7 +8,7 @@ import {
   createFutureInstallment,
   scheduleTotals,
 } from '../lib/loanSchedule'
-import { buildLoanPayload, getPaymentsRemaining, isLoanClosed, loanForwardTotal, getLoanEndMonth, getLoanStartMonth } from '../lib/loanUtils'
+import { buildLoanPayload, getPaymentsRemaining, isLoanClosed, isLoanInstallmentPaid, isLoanMonthProjected, loanForwardTotal, getLoanEndMonth, getLoanStartMonth } from '../lib/loanUtils'
 import { formatMoney, formatMonthLabel, shiftYearMonth, currentYearMonth } from '../lib/format'
 import Modal from '../components/Modal'
 import MoneyInput from '../components/MoneyInput'
@@ -44,6 +44,7 @@ export default function Loans() {
   const [futureForm, setFutureForm] = useState(emptyFutureForm('', selectedMonth))
 
   const cariAy = currentYearMonth()
+  const isProjectedMonth = isLoanMonthProjected(selectedMonth, cariAy)
 
   const loanSummary = useMemo(() => {
     const report = buildHomeReport(state, selectedMonth, cariAy)
@@ -56,8 +57,8 @@ export default function Loans() {
   }, [state, selectedMonth, cariAy])
 
   const scheduleRows = useMemo(
-    () => buildAllLoanSchedules(state.loans, selectedMonth, selectedMonth),
-    [state.loans, selectedMonth]
+    () => buildAllLoanSchedules(state.loans, selectedMonth, cariAy),
+    [state.loans, selectedMonth, cariAy]
   )
 
   const totals = useMemo(() => scheduleTotals(scheduleRows), [scheduleRows])
@@ -153,6 +154,8 @@ export default function Loans() {
   return (
     <div className="space-y-4">
       <PageSummary
+        isProjected={isProjectedMonth}
+        projectedFrom={isProjectedMonth ? cariAy : null}
         fields={[
           { label: 'Bu ay kredi taksit', value: loanSummary.gross },
           { label: 'Aylık bakiye', value: loanSummary.unpaid, tone: 'negative' },
@@ -184,10 +187,14 @@ export default function Loans() {
             const totalTerms = Number(loan.totalTerms) || Number(loan.remainingTerms) || 1
             const paymentsLeft = getPaymentsRemaining(loan, selectedMonth)
             const closed = isLoanClosed(loan, selectedMonth)
-            const loanSchedule = buildLoanFullSchedule(loan, selectedMonth, selectedMonth)
-            const forward = loanForwardTotal(loan, selectedMonth, selectedMonth)
+            const loanSchedule = buildLoanFullSchedule(loan, selectedMonth, cariAy)
+            const forward = loanForwardTotal(loan, selectedMonth, cariAy)
+            const installmentPaid = isLoanInstallmentPaid(loan, selectedMonth, cariAy)
             return (
-              <li key={loan.id} className={`card p-4 ${closed ? 'opacity-60' : ''}`}>
+              <li
+                key={loan.id}
+                className={`card p-4 ${closed ? 'opacity-60' : ''} ${isProjectedMonth ? 'border border-dashed border-blue-200' : ''}`}
+              >
                 <div className="flex items-start justify-between gap-2">
                   <div>
                     <p className="font-bold text-gray-900">{loan.bankName}</p>
@@ -210,10 +217,10 @@ export default function Loans() {
                   </div>
                 </div>
                 <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
-                  <div className={`rounded-xl p-3 ${loan.installmentPaid ? 'bg-brand-50' : 'bg-red-50'}`}>
+                  <div className={`rounded-xl p-3 ${installmentPaid ? 'bg-brand-50' : 'bg-red-50'}`}>
                     <p className="text-xs text-gray-500">Aylık ödeme</p>
                     <p
-                      className={`font-semibold ${loan.installmentPaid ? 'text-brand-700 line-through' : 'money-negative'}`}
+                      className={`font-semibold ${installmentPaid ? 'text-brand-700 line-through' : 'money-negative'}`}
                     >
                       {formatMoney(loan.monthlyPayment)}
                     </p>
@@ -223,11 +230,11 @@ export default function Loans() {
                     <p className="font-semibold">{formatMoney(loan.payoffAmount)}</p>
                   </div>
                 </div>
-                {!closed && (
+                {!closed && !isProjectedMonth && (
                   <div className="mt-3">
                     <PaidToggle
                       label="Taksit ödendi"
-                      checked={Boolean(loan.installmentPaid)}
+                      checked={installmentPaid}
                       onChange={(v) => updateLoan(loan.id, { installmentPaid: v })}
                     />
                   </div>

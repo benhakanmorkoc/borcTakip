@@ -59,10 +59,16 @@ export function getLoanInstallmentForMonth(loan, yearMonth) {
   return 0
 }
 
-export function isLoanInstallmentPaid(loan, yearMonth, referenceMonth = yearMonth) {
+/** Cari aydan sonraki aylar tahmini; ödeme durumu taşınmaz */
+export function isLoanMonthProjected(viewMonth, cariAy = currentYearMonth()) {
+  return compareYearMonth(viewMonth, cariAy) > 0
+}
+
+export function isLoanInstallmentPaid(loan, yearMonth, cariAy = currentYearMonth()) {
+  if (isLoanMonthProjected(yearMonth, cariAy)) return false
   const manual = (loan.futureInstallments || []).find((r) => r.month === yearMonth)
   if (manual) return Boolean(manual.paid)
-  return yearMonth === referenceMonth && Boolean(loan.installmentPaid)
+  return yearMonth === cariAy && Boolean(loan.installmentPaid)
 }
 
 export function loanHasInstallmentInMonth(loan, yearMonth) {
@@ -70,18 +76,18 @@ export function loanHasInstallmentInMonth(loan, yearMonth) {
 }
 
 /** Seçili ayın tek taksit tutarı */
-export function loanMonthlyDue(loan, viewMonth, referenceMonth = viewMonth) {
+export function loanMonthlyDue(loan, viewMonth, cariAy = currentYearMonth()) {
   const amount = getLoanInstallmentForMonth(loan, viewMonth)
   if (amount <= 0) return 0
-  if (isLoanInstallmentPaid(loan, viewMonth, referenceMonth)) return 0
+  if (isLoanInstallmentPaid(loan, viewMonth, cariAy)) return 0
   return amount
 }
 
 /** Seçili aydan itibaren kalan tüm taksitlerin toplamı */
-export function loanForwardTotal(loan, viewMonth, referenceMonth = viewMonth) {
+export function loanForwardTotal(loan, viewMonth, cariAy = currentYearMonth()) {
   let count = getPaymentsRemaining(loan, viewMonth)
   if (count <= 0) return 0
-  if (viewMonth === referenceMonth && loan.installmentPaid) {
+  if (viewMonth === cariAy && loan.installmentPaid) {
     count = Math.max(0, count - 1)
   }
   return count * (Number(loan.monthlyPayment) || 0)
