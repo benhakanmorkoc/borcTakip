@@ -63,7 +63,7 @@ export function buildMonthlyReport(state, yearMonth, referenceMonth = yearMonth)
         id: l.id,
         category: 'Banka Kredisi',
         label: l.bankName,
-        amount: forwardTotal,
+        amount: Number(l.monthlyPayment) || 0,
         monthlyAmount: Number(l.monthlyPayment) || 0,
         dueAmount,
         forwardTotal,
@@ -112,7 +112,7 @@ export function buildMonthlyReport(state, yearMonth, referenceMonth = yearMonth)
   const totalLoanPayoff = activeLoans.reduce((s, l) => s + (Number(l.payoffAmount) || 0), 0)
   const totalOtherPayment = otherItems.reduce((s, i) => s + i.dueAmount, 0)
 
-  const totalExpenses = totalCardMinPayment + totalLoanForward + totalOtherPayment
+  const totalExpenses = totalCardMinPayment + totalLoanInstallment + totalOtherPayment
   const totalPaidExpenses = allExpenses.reduce((s, i) => s + (i.paid ? i.amount : 0), 0)
 
   const totalIncome = incomeItems.reduce((s, i) => s + i.amount, 0)
@@ -189,10 +189,10 @@ export function buildMultiMonthChartData(state, referenceMonth = currentYearMont
       monthLabel: yearMonth.slice(5) + '/' + yearMonth.slice(2, 4),
       gelir: report.totalIncome,
       kartMin: report.totalCardMinPayment,
-      krediTaksit: report.totalLoanForward,
+      krediTaksit: report.totalLoanInstallment,
       digerOdeme: report.totalOtherPayment,
-      toplamGider: report.totalCardMinPayment + report.totalLoanForward + report.totalOtherPayment,
-      bakiye: report.totalIncome - (report.totalCardMinPayment + report.totalLoanForward + report.totalOtherPayment),
+      toplamGider: report.totalExpenses,
+      bakiye: report.totalIncome - report.totalExpenses,
     }
   })
 }
@@ -202,9 +202,9 @@ export function findFirstSurplusMonth(state, referenceMonth = currentYearMonth()
   for (const yearMonth of months) {
     if (compareYearMonth(yearMonth, referenceMonth) < 0) continue
     const report = buildMonthlyReport(state, yearMonth, yearMonth)
-    const gider = report.totalCardMinPayment + report.totalLoanForward + report.totalOtherPayment
+    const gider = report.totalExpenses
     if (report.totalIncome > gider) {
-      return { yearMonth, report: { ...report, totalExpenses: gider, balance: report.totalIncome - gider } }
+      return { yearMonth, report: { ...report, balance: report.totalIncome - gider } }
     }
   }
   return null

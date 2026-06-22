@@ -45,7 +45,10 @@ export default function Home() {
     [state, selectedMonth]
   )
 
-  const chartGider = currentReport.totalCardMinPayment + currentReport.totalLoanForward + currentReport.totalOtherPayment
+  const monthlyGider =
+    currentReport.totalCardMinPayment +
+    currentReport.totalLoanInstallment +
+    currentReport.totalOtherPayment
 
   return (
     <div className="space-y-4">
@@ -74,17 +77,54 @@ export default function Home() {
 
       <div className="card p-4">
         <MonthPicker value={selectedMonth} onChange={setSelectedMonth} />
-        <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+        <div className="mt-3 grid grid-cols-1 gap-2 text-xs sm:grid-cols-3">
           <div className="rounded-xl bg-brand-50 p-2.5">
             <p className="text-gray-500">Seçili ay gelir</p>
             <p className="font-bold text-brand-700">{formatMoney(currentReport.totalIncome)}</p>
           </div>
           <div className="rounded-xl bg-red-50 p-2.5">
             <p className="text-gray-500">Seçili ay gider</p>
-            <p className="font-bold text-danger">{formatMoney(chartGider)}</p>
-            <p className="mt-0.5 text-[10px] text-gray-400">
-              Kredi dahil kalan: {formatMoney(currentReport.totalLoanForward)}
-            </p>
+            <p className="font-bold text-danger">{formatMoney(monthlyGider)}</p>
+            <div className="mt-1 space-y-0.5 text-[10px] text-gray-500">
+              <p className="flex justify-between gap-2">
+                <span>Kart min. ödeme</span>
+                <span className="font-medium text-gray-700">
+                  {formatMoney(currentReport.totalCardMinPayment)}
+                </span>
+              </p>
+              <p className="flex justify-between gap-2">
+                <span>Kredi taksit</span>
+                <span className="font-medium text-gray-700">
+                  {formatMoney(currentReport.totalLoanInstallment)}
+                </span>
+              </p>
+              {currentReport.totalOtherPayment > 0 && (
+                <p className="flex justify-between gap-2">
+                  <span>Diğer ödeme</span>
+                  <span className="font-medium text-gray-700">
+                    {formatMoney(currentReport.totalOtherPayment)}
+                  </span>
+                </p>
+              )}
+            </div>
+          </div>
+          <div className="rounded-xl bg-amber-50 p-2.5">
+            <p className="text-gray-500">Toplam borç / kapama</p>
+            <p className="font-bold text-amber-900">{formatMoney(currentReport.grandTotalDebt)}</p>
+            <div className="mt-1 space-y-0.5 text-[10px] text-gray-500">
+              <p className="flex justify-between gap-2">
+                <span>Kart toplam borç</span>
+                <span className="font-medium text-gray-700">
+                  {formatMoney(currentReport.totalCardPayoff)}
+                </span>
+              </p>
+              <p className="flex justify-between gap-2">
+                <span>Kredi kapama</span>
+                <span className="font-medium text-gray-700">
+                  {formatMoney(currentReport.totalLoanPayoff)}
+                </span>
+              </p>
+            </div>
           </div>
         </div>
       </div>
