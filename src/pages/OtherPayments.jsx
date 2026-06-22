@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { Plus, Pencil, Trash2, Tag } from 'lucide-react'
 import { useFinance } from '../context/FinanceContext'
 import { buildMonthlyReport } from '../lib/report'
+import { isNegativeBalancePayment, isNegativeBalanceType } from '../lib/paymentCategories'
 import { formatDate, formatMoney } from '../lib/format'
 import Modal from '../components/Modal'
 import MoneyInput from '../components/MoneyInput'
@@ -15,6 +16,7 @@ const emptyForm = (types) => ({
   dueDate: new Date().toISOString().slice(0, 10),
   note: '',
   paid: false,
+  isNegativeBalance: false,
 })
 
 export default function OtherPayments() {
@@ -48,6 +50,7 @@ export default function OtherPayments() {
       dueDate: item.dueDate,
       note: item.note || '',
       paid: Boolean(item.paid),
+      isNegativeBalance: Boolean(item.isNegativeBalance) || isNegativeBalancePayment(item),
     })
     setOpen(true)
   }
@@ -106,6 +109,11 @@ export default function OtherPayments() {
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wide text-brand-700">{item.type}</p>
                   <p className="font-bold text-gray-900">{item.name || item.type}</p>
+                  {(item.isNegativeBalance || isNegativeBalancePayment(item)) && (
+                    <span className="mt-1 inline-block rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800">
+                      Negatif bakiye
+                    </span>
+                  )}
                   <p className="text-xs text-gray-500">Vade: {formatDate(item.dueDate)}</p>
                 </div>
                 <div className="flex items-start gap-2">
@@ -142,7 +150,14 @@ export default function OtherPayments() {
             <select
               className="field-input"
               value={form.type}
-              onChange={(e) => setForm((f) => ({ ...f, type: e.target.value }))}
+              onChange={(e) => {
+                const type = e.target.value
+                setForm((f) => ({
+                  ...f,
+                  type,
+                  isNegativeBalance: isNegativeBalanceType(type) ? true : f.isNegativeBalance,
+                }))
+              }}
             >
               {state.paymentTypes.map((t) => (
                 <option key={t} value={t}>
@@ -185,7 +200,12 @@ export default function OtherPayments() {
               placeholder="İsteğe bağlı"
             />
           </div>
-          <div className="border-t border-gray-100 pt-4">
+          <div className="border-t border-gray-100 pt-4 space-y-3">
+            <PaidToggle
+              label="Negatif bakiye kalemi"
+              checked={Boolean(form.isNegativeBalance)}
+              onChange={(v) => setForm((f) => ({ ...f, isNegativeBalance: v }))}
+            />
             <PaidToggle
               label="Ödendi"
               checked={form.paid}

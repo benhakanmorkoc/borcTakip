@@ -16,6 +16,7 @@ import {
   loanHasInstallmentInMonth,
   loanMonthlyDue,
 } from './loanUtils'
+import { isNegativeBalancePayment } from './paymentCategories'
 
 function creditCardDueAmount(card) {
   if (card.fullyPaid || card.minPaid) return 0
@@ -41,16 +42,6 @@ function paidLabel(card) {
   if (card.fullyPaid) return 'Tamamı ödendi'
   if (card.minPaid) return 'Asgari ödendi'
   return null
-}
-
-/** Diğer ödemelerde "Negatif Bakiye" tipi ayrı kategoride */
-export function isNegativeBalanceType(type) {
-  const t = String(type || '').toLocaleLowerCase('tr-TR')
-  return t.includes('negatif') && t.includes('bakiye')
-}
-
-function isNegativeBalancePayment(payment) {
-  return isNegativeBalanceType(payment.type)
 }
 
 function monthHasCardData(state, yearMonth) {
@@ -110,7 +101,9 @@ export function buildProjectedState(state, targetMonth, anchorMonth = currentYea
 
   if (!monthHasOtherData(state, targetMonth) && monthHasOtherData(state, anchorMonth)) {
     projectedParts.push('other')
-    const anchorOthers = state.otherPayments.filter((p) => yearMonthFromDate(p.dueDate) === anchorMonth)
+    const anchorOthers = state.otherPayments.filter(
+      (p) => yearMonthFromDate(p.dueDate) === anchorMonth && !isNegativeBalancePayment(p)
+    )
     next = {
       ...next,
       otherPayments: [
@@ -200,7 +193,7 @@ export function buildMonthlyReport(state, yearMonth, referenceMonth = yearMonth)
     .map((p) => {
       const amount = Number(p.amount) || 0
       const paid = Boolean(p.paid)
-      const isNegativeBalance = isNegativeBalancePayment(p)
+      const isNegativeBalance = Boolean(p.isNegativeBalance) || isNegativeBalancePayment(p)
       return {
         id: p.id,
         category: p.type,

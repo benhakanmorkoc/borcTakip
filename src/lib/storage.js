@@ -1,7 +1,31 @@
+import { isNegativeBalancePayment } from './paymentCategories'
+
 const STORAGE_KEY = 'borc-takip-data-v1'
 
-export const DEFAULT_PAYMENT_TYPES = ['Okul Taksidi', 'Kur Taksidi', 'Kira', 'Fatura', 'Diğer']
+export const DEFAULT_PAYMENT_TYPES = [
+  'Okul Taksidi',
+  'Kur Taksidi',
+  'Kira',
+  'Fatura',
+  'Negatif Bakiye',
+  'Diğer',
+]
 export const DEFAULT_INCOME_TYPES = ['Maaş', 'Ek Kazanç', 'Kira Geliri', 'Diğer']
+
+function normalizeOtherPayment(payment) {
+  return {
+    ...payment,
+    isNegativeBalance: Boolean(payment.isNegativeBalance) || isNegativeBalancePayment(payment),
+  }
+}
+
+export function normalizeFinanceState(state) {
+  return {
+    ...state,
+    otherPayments: (state.otherPayments || []).map(normalizeOtherPayment),
+    paymentTypes: [...new Set([...(state.paymentTypes || []), ...DEFAULT_PAYMENT_TYPES])],
+  }
+}
 
 export const emptyState = () => ({
   creditCards: [],
@@ -17,12 +41,12 @@ export function loadState() {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (!raw) return emptyState()
     const parsed = JSON.parse(raw)
-    return {
+    return normalizeFinanceState({
       ...emptyState(),
       ...parsed,
       paymentTypes: parsed.paymentTypes?.length ? parsed.paymentTypes : [...DEFAULT_PAYMENT_TYPES],
       incomeTypes: parsed.incomeTypes?.length ? parsed.incomeTypes : [...DEFAULT_INCOME_TYPES],
-    }
+    })
   } catch {
     return emptyState()
   }

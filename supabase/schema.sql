@@ -37,6 +37,7 @@ create table if not exists other_payments (
   due_date date not null,
   note text,
   paid boolean not null default false,
+  is_negative_balance boolean not null default false,
   created_at timestamptz default now()
 );
 

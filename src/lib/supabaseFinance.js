@@ -3,7 +3,9 @@ import {
   DEFAULT_PAYMENT_TYPES,
   emptyState,
   loadState,
+  normalizeFinanceState,
 } from './storage'
+import { isNegativeBalancePayment, isNegativeBalanceType } from './paymentCategories'
 import { supabase } from './supabase'
 
 function fromCreditCard(row) {
@@ -67,7 +69,7 @@ function toLoan(row, userId) {
 }
 
 function fromOtherPayment(row) {
-  return {
+  const payment = {
     id: row.id,
     type: row.type,
     name: row.name || '',
@@ -75,10 +77,17 @@ function fromOtherPayment(row) {
     dueDate: row.due_date,
     note: row.note || '',
     paid: Boolean(row.paid),
+    isNegativeBalance: Boolean(row.is_negative_balance),
   }
+  if (!payment.isNegativeBalance) {
+    payment.isNegativeBalance = isNegativeBalancePayment(payment)
+  }
+  return payment
 }
 
 function toOtherPayment(row, userId) {
+  const isNegativeBalance =
+    Boolean(row.isNegativeBalance) || isNegativeBalancePayment(row) || isNegativeBalanceType(row.type)
   return {
     user_id: userId,
     type: row.type,
@@ -87,6 +96,7 @@ function toOtherPayment(row, userId) {
     due_date: row.dueDate,
     note: row.note || null,
     paid: Boolean(row.paid),
+    is_negative_balance: isNegativeBalance,
   }
 }
 
@@ -156,14 +166,14 @@ export async function fetchFinanceState(userId) {
     if (!incomeTypes.length) incomeTypes = [...DEFAULT_INCOME_TYPES]
   }
 
-  return {
+  return normalizeFinanceState({
     creditCards: cards.data.map(fromCreditCard),
     loans: loans.data.map(fromLoan),
     otherPayments: payments.data.map(fromOtherPayment),
     incomes: incomes.data.map(fromIncome),
     paymentTypes,
     incomeTypes,
-  }
+  })
 }
 
 export async function migrateLocalToSupabase(userId) {
@@ -303,6 +313,10 @@ export const financeApi = {
         due_date: data.dueDate,
         note: data.note || null,
         paid: Boolean(data.paid),
+        is_negative_balance:
+          Boolean(data.isNegativeBalance) ||
+          isNegativeBalancePayment(data) ||
+          isNegativeBalanceType(data.type),
       })
       .eq('id', id)
       .select()
