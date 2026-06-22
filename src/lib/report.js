@@ -282,12 +282,13 @@ export function buildMultiMonthChartData(state, cariAy = currentYearMonth()) {
       yearMonth,
       monthLabel: formatMonthShort(yearMonth),
       gelir: homeReport.totalIncome,
+      giderler: homeReport.totalMinAmount,
       kartMin: homeReport.totalCardMinGross,
       krediTaksit: homeReport.totalLoanGross,
       digerOdeme: homeReport.totalOtherGross,
       toplamGider: homeReport.totalMinAmount,
       odenecek: homeReport.remainingMinAmount,
-      bakiye: homeReport.totalIncome - homeReport.remainingMinAmount,
+      bakiye: homeReport.incomeBalance,
       isProjected: homeReport.isProjected,
     }
   })
@@ -298,7 +299,7 @@ export function findFirstSurplusMonth(state, cariAy = currentYearMonth()) {
   for (const yearMonth of months) {
     if (compareYearMonth(yearMonth, cariAy) < 0) continue
     const report = buildHomeReport(state, yearMonth, cariAy)
-    if (report.totalIncome > report.remainingMinAmount) {
+    if (report.incomeBalance > 0) {
       return { yearMonth, report }
     }
   }

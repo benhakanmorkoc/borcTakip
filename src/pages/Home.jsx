@@ -263,6 +263,8 @@ export default function Home() {
 
                 <th className="px-3 py-2 font-semibold">Gelir</th>
 
+                <th className="px-3 py-2 font-semibold">Giderler</th>
+
                 <th className="px-3 py-2 font-semibold">Ödenecek</th>
 
                 <th className="px-3 py-2 font-semibold">Bakiye</th>
@@ -302,6 +304,8 @@ export default function Home() {
                     </td>
 
                     <td className="px-3 py-2 text-brand-700">{formatMoney(row.gelir)}</td>
+
+                    <td className="px-3 py-2 text-gray-900">{formatMoney(row.giderler)}</td>
 
                     <td className="px-3 py-2 text-danger">{formatMoney(row.odenecek)}</td>
 
