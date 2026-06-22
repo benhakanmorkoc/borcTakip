@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Plus, Pencil, Trash2, Calendar, Info } from 'lucide-react'
+import { Plus, Pencil, Trash2, Info } from 'lucide-react'
 import { useFinance } from '../context/FinanceContext'
 import { buildHomeReport } from '../lib/report'
 import {
@@ -11,6 +11,7 @@ import {
 import { buildLoanPayload, getPaymentsRemaining, isLoanClosed, isLoanInstallmentPaid, isLoanMonthProjected, loanForwardTotal, getLoanEndMonth, getLoanStartMonth } from '../lib/loanUtils'
 import { formatMoney, formatMonthLabel, shiftYearMonth, currentYearMonth } from '../lib/format'
 import Modal from '../components/Modal'
+import AccordionSection from '../components/AccordionSection'
 import MoneyInput from '../components/MoneyInput'
 import PaidToggle from '../components/PaidToggle'
 import PageSummary from '../components/PageSummary'
@@ -262,35 +263,35 @@ export default function Loans() {
                 )}
 
                 {loanSchedule.length > 0 && !closed && (
-                  <div className="mt-4 border-t border-gray-100 pt-3">
-                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
-                      İleri vade özeti
-                    </p>
+                  <AccordionSection
+                    title="İleri vade özeti"
+                    className="mt-4 border-t border-gray-100 pt-3"
+                  >
                     <ul className="space-y-1.5 text-xs">
                       {loanSchedule.map((row) => {
                         const rowPaid = isLoanMonthProjected(row.month, cariAy) ? false : row.paid
                         return (
-                        <li key={row.id} className="flex justify-between gap-2">
-                          <span className={rowPaid ? 'text-gray-400 line-through' : 'text-gray-700'}>
-                            {formatMonthLabel(row.month)}
-                            {row.source === 'current' && (
-                              <span className="ml-1 text-[10px] text-brand-600">bu ay</span>
-                            )}
-                            {row.source === 'manual' && (
-                              <span className="ml-1 text-[10px] text-purple-600">manuel</span>
-                            )}
-                            {row.paymentsLeft != null && (
-                              <span className="ml-1 text-[10px] text-gray-400">({row.paymentsLeft} ay)</span>
-                            )}
-                          </span>
-                          <span className={rowPaid ? 'text-brand-700' : 'money-negative'}>
-                            {formatMoney(row.amount)}
-                          </span>
-                        </li>
+                          <li key={row.id} className="flex justify-between gap-2">
+                            <span className={rowPaid ? 'text-gray-400 line-through' : 'text-gray-700'}>
+                              {formatMonthLabel(row.month)}
+                              {row.source === 'current' && (
+                                <span className="ml-1 text-[10px] text-brand-600">bu ay</span>
+                              )}
+                              {row.source === 'manual' && (
+                                <span className="ml-1 text-[10px] text-purple-600">manuel</span>
+                              )}
+                              {row.paymentsLeft != null && (
+                                <span className="ml-1 text-[10px] text-gray-400">({row.paymentsLeft} ay)</span>
+                              )}
+                            </span>
+                            <span className={rowPaid ? 'text-brand-700' : 'money-negative'}>
+                              {formatMoney(row.amount)}
+                            </span>
+                          </li>
                         )
                       })}
                     </ul>
-                  </div>
+                  </AccordionSection>
                 )}
               </li>
             )
@@ -299,113 +300,108 @@ export default function Loans() {
       )}
 
       {state.loans.length > 0 && (
-        <div className="card overflow-hidden">
-          <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
-            <div className="flex items-center gap-2">
-              <Calendar size={16} className="text-brand-700" />
-              <div>
-                <h3 className="text-sm font-semibold text-gray-900">İleri vade planı</h3>
-                <p className="text-[10px] text-gray-500 capitalize">
-                  {formatMonthLabel(selectedMonth)} itibarıyla · kalan vade × taksit
-                </p>
-              </div>
-            </div>
-            <button type="button" onClick={() => openNewFuture()} className="btn-secondary px-2 py-1.5 text-xs">
-              <Plus size={14} />
-              Vade ekle
-            </button>
-          </div>
-
-          {scheduleRows.length === 0 ? (
-            <p className="px-4 py-6 text-center text-sm text-gray-400">Planlanacak vade yok.</p>
-          ) : (
-            <>
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-gray-50 text-gray-500">
-                    <tr>
-                      <th className="px-3 py-2 font-semibold">Ay</th>
-                      <th className="px-3 py-2 font-semibold">Banka</th>
-                      <th className="px-3 py-2 font-semibold">Tutar</th>
-                      <th className="px-3 py-2 font-semibold">Tür</th>
-                      <th className="px-3 py-2 font-semibold"></th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-50">
-                    {scheduleRows.map((row) => {
-                      const rowPaid = isLoanMonthProjected(row.month, cariAy) ? false : row.paid
-                      return (
-                        <tr key={row.id} className={rowPaid ? 'bg-brand-50/40' : ''}>
-                          <td className="px-3 py-2 font-medium capitalize">
-                            {formatMonthLabel(row.month)}
-                          </td>
-                          <td className="px-3 py-2">{row.bankName}</td>
-                          <td
-                            className={`px-3 py-2 font-semibold ${rowPaid ? 'text-brand-700 line-through' : 'money-negative'}`}
-                          >
-                            {formatMoney(row.amount)}
-                          </td>
-                          <td className="px-3 py-2">
-                            <span
-                              className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
-                                row.source === 'manual'
-                                  ? 'bg-purple-50 text-purple-700'
-                                  : 'bg-gray-100 text-gray-600'
-                              }`}
+        <div className="card overflow-hidden p-4">
+          <AccordionSection
+            title="İleri vade planı"
+            subtitle={`${formatMonthLabel(selectedMonth)} itibarıyla · kalan vade × taksit`}
+            action={
+              <button type="button" onClick={() => openNewFuture()} className="btn-secondary px-2 py-1.5 text-xs">
+                <Plus size={14} />
+                Vade ekle
+              </button>
+            }
+          >
+            {scheduleRows.length === 0 ? (
+              <p className="py-4 text-center text-sm text-gray-400">Planlanacak vade yok.</p>
+            ) : (
+              <>
+                <div className="overflow-x-auto rounded-xl border border-gray-100">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-gray-50 text-gray-500">
+                      <tr>
+                        <th className="px-3 py-2 font-semibold">Ay</th>
+                        <th className="px-3 py-2 font-semibold">Banka</th>
+                        <th className="px-3 py-2 font-semibold">Tutar</th>
+                        <th className="px-3 py-2 font-semibold">Tür</th>
+                        <th className="px-3 py-2 font-semibold"></th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50">
+                      {scheduleRows.map((row) => {
+                        const rowPaid = isLoanMonthProjected(row.month, cariAy) ? false : row.paid
+                        return (
+                          <tr key={row.id} className={rowPaid ? 'bg-brand-50/40' : ''}>
+                            <td className="px-3 py-2 font-medium capitalize">
+                              {formatMonthLabel(row.month)}
+                            </td>
+                            <td className="px-3 py-2">{row.bankName}</td>
+                            <td
+                              className={`px-3 py-2 font-semibold ${rowPaid ? 'text-brand-700 line-through' : 'money-negative'}`}
                             >
-                              {row.source === 'manual' ? 'Manuel' : 'Otomatik'}
-                            </span>
-                          </td>
-                          <td className="px-3 py-2">
-                            {row.source === 'manual' ? (
-                              <div className="flex gap-1">
-                                <button
-                                  type="button"
-                                  className="btn-danger p-1"
-                                  onClick={() =>
-                                    openEditFuture(row.loanId, {
-                                      id: row.id,
-                                      month: row.month,
-                                      amount: row.amount,
-                                      note: row.note,
-                                      paid: row.paid,
-                                    })
-                                  }
-                                >
-                                  <Pencil size={14} />
-                                </button>
-                                <button
-                                  type="button"
-                                  className="btn-danger p-1"
-                                  onClick={() => removeFutureInstallment(row.loanId, row.id)}
-                                >
-                                  <Trash2 size={14} />
-                                </button>
-                              </div>
-                            ) : null}
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              </div>
-              <div className="grid grid-cols-3 gap-2 border-t border-gray-100 bg-gray-50 px-3 py-3 text-[10px]">
-                <div>
-                  <p className="text-gray-500">Toplam plan</p>
-                  <p className="font-bold text-gray-900">{formatMoney(totals.total)}</p>
+                              {formatMoney(row.amount)}
+                            </td>
+                            <td className="px-3 py-2">
+                              <span
+                                className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                                  row.source === 'manual'
+                                    ? 'bg-purple-50 text-purple-700'
+                                    : 'bg-gray-100 text-gray-600'
+                                }`}
+                              >
+                                {row.source === 'manual' ? 'Manuel' : 'Otomatik'}
+                              </span>
+                            </td>
+                            <td className="px-3 py-2">
+                              {row.source === 'manual' ? (
+                                <div className="flex gap-1">
+                                  <button
+                                    type="button"
+                                    className="btn-danger p-1"
+                                    onClick={() =>
+                                      openEditFuture(row.loanId, {
+                                        id: row.id,
+                                        month: row.month,
+                                        amount: row.amount,
+                                        note: row.note,
+                                        paid: row.paid,
+                                      })
+                                    }
+                                  >
+                                    <Pencil size={14} />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="btn-danger p-1"
+                                    onClick={() => removeFutureInstallment(row.loanId, row.id)}
+                                  >
+                                    <Trash2 size={14} />
+                                  </button>
+                                </div>
+                              ) : null}
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
                 </div>
-                <div>
-                  <p className="text-gray-500">Ödenen</p>
-                  <p className="font-bold text-brand-700">{formatMoney(totals.paid)}</p>
+                <div className="mt-3 grid grid-cols-3 gap-2 rounded-xl bg-gray-50 px-3 py-3 text-[10px]">
+                  <div>
+                    <p className="text-gray-500">Toplam plan</p>
+                    <p className="font-bold text-gray-900">{formatMoney(totals.total)}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-500">Ödenen</p>
+                    <p className="font-bold text-brand-700">{formatMoney(totals.paid)}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-500">Kalan</p>
+                    <p className="font-bold text-danger">{formatMoney(totals.remaining)}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-gray-500">Kalan</p>
-                  <p className="font-bold text-danger">{formatMoney(totals.remaining)}</p>
-                </div>
-              </div>
-            </>
-          )}
+              </>
+            )}
+          </AccordionSection>
         </div>
       )}
 
