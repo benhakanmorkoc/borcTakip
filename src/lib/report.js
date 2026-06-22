@@ -2,6 +2,7 @@ import {
   compareYearMonth,
   currentYearMonth,
   formatMoney,
+  formatMonthShort,
   shiftYearMonth,
   yearMonthFromDate,
 } from './format'
@@ -194,6 +195,8 @@ export function buildMonthlyReport(state, yearMonth, referenceMonth = currentYea
   const totalPaidExpenses = totalPaidAmount
 
   const totalIncome = incomeItems.reduce((s, i) => s + i.amount, 0)
+  /** Gelir − brüt giderler (kart min + kredi taksit + diğer ödemeler, negatif hariç) */
+  const incomeBalance = totalIncome - totalMinAmount
   const balance = totalIncome - payableAmount
 
   return {
@@ -224,15 +227,11 @@ export function buildMonthlyReport(state, yearMonth, referenceMonth = currentYea
     totalExpenses,
     totalPaidExpenses,
     totalIncome,
+    incomeBalance,
     balance,
     totalDebt: totalCardPayoff,
     grandTotalDebt: grandTotalAllDebt,
   }
-}
-
-function formatMonthShort(yearMonth) {
-  const [y, m] = yearMonth.split('-').map(Number)
-  return new Date(y, m - 1, 1).toLocaleDateString('tr-TR', { month: 'short', year: '2-digit' })
 }
 
 function collectMonthsFromState(state, referenceMonth) {
@@ -281,7 +280,7 @@ export function buildMultiMonthChartData(state, cariAy = currentYearMonth()) {
     const homeReport = buildHomeReport(state, yearMonth, cariAy)
     return {
       yearMonth,
-      monthLabel: yearMonth.slice(5) + '/' + yearMonth.slice(2, 4),
+      monthLabel: formatMonthShort(yearMonth),
       gelir: homeReport.totalIncome,
       kartMin: homeReport.totalCardMinGross,
       krediTaksit: homeReport.totalLoanGross,

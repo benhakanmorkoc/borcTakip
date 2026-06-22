@@ -3,7 +3,7 @@ import { Plus, Pencil, Trash2, Tag, Info } from 'lucide-react'
 import { useFinance } from '../context/FinanceContext'
 import { buildHomeReport, buildOtherPaymentsForMonth, isProjectedPayment } from '../lib/report'
 import { isNegativeBalancePayment, isNegativeBalanceType } from '../lib/paymentCategories'
-import { formatDate, formatMoney, formatMonthLabel, currentYearMonth, yearMonthFromDate } from '../lib/format'
+import { formatDate, formatMoneyWhole, formatMonthLabel, currentYearMonth, yearMonthFromDate } from '../lib/format'
 import Modal from '../components/Modal'
 import MoneyInput from '../components/MoneyInput'
 import PaidToggle from '../components/PaidToggle'
@@ -131,6 +131,8 @@ export default function OtherPayments() {
       <PageSummary
         isProjected={isProjected}
         projectedFrom={projectedFrom}
+        formatValue={formatMoneyWhole}
+        valueClassName="mt-1 text-sm font-bold leading-tight"
         fields={[
           { label: 'Bu ay diğer ödeme', value: paymentSummary.gross },
           { label: 'Toplam ödenen', value: paymentSummary.paid, tone: 'positive' },
@@ -214,9 +216,9 @@ export default function OtherPayments() {
                   </div>
                   <div className="flex items-start gap-2">
                     <p
-                      className={`font-semibold ${paid ? 'text-brand-700 line-through' : 'money-negative'}`}
+                      className={`shrink-0 text-sm font-semibold ${paid ? 'text-brand-700 line-through' : 'money-negative'}`}
                     >
-                      {formatMoney(item.amount)}
+                      {formatMoneyWhole(item.amount)}
                     </p>
                     <div className="flex gap-1">
                       <button type="button" onClick={() => openEdit(item)} className="btn-danger">

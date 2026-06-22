@@ -8,6 +8,17 @@ export function formatMoney(value, currency = 'TRY') {
   }).format(num)
 }
 
+/** Özet kartları vb. — kuruş hanesi olmadan */
+export function formatMoneyWhole(value, currency = 'TRY') {
+  const num = Number(value) || 0
+  return new Intl.NumberFormat('tr-TR', {
+    style: 'currency',
+    currency,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(num)
+}
+
 export function parseMoneyInput(value) {
   if (value === '' || value == null) return 0
   const normalized = String(value).replace(/\./g, '').replace(',', '.')

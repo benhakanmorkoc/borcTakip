@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Plus, Pencil, Trash2, Calendar } from 'lucide-react'
+import { Plus, Pencil, Trash2, Calendar, Info } from 'lucide-react'
 import { useFinance } from '../context/FinanceContext'
 import { buildHomeReport } from '../lib/report'
 import {
@@ -61,7 +61,13 @@ export default function Loans() {
     [state.loans, selectedMonth, cariAy]
   )
 
-  const totals = useMemo(() => scheduleTotals(scheduleRows), [scheduleRows])
+  const totals = useMemo(() => {
+    const adjusted = scheduleRows.map((row) => ({
+      ...row,
+      paid: isLoanMonthProjected(row.month, cariAy) ? false : row.paid,
+    }))
+    return scheduleTotals(adjusted)
+  }, [scheduleRows, cariAy])
 
   const openNew = () => {
     setEditing(null)
@@ -163,6 +169,16 @@ export default function Loans() {
         ]}
       />
 
+      {isProjectedMonth && (
+        <div className="flex items-start gap-2 rounded-xl border border-blue-100 bg-blue-50 px-3 py-2 text-[11px] text-blue-800">
+          <Info size={14} className="mt-0.5 shrink-0" />
+          <p>
+            <strong>Tahmini</strong> — {formatMonthLabel(cariAy)} kredi taksitleri yansıtıldı. Ödeme
+            işaretleri kapalı; bu ay geldiğinde ödeme durumunu güncelleyebilirsiniz.
+          </p>
+        </div>
+      )}
+
       <div className="card px-4 py-3 text-sm">
         <span className="text-gray-500">Seçili aydan kalan kredi toplamı: </span>
         <span className="font-bold text-danger">{formatMoney(loanSummary.forward)}</span>
@@ -189,7 +205,9 @@ export default function Loans() {
             const closed = isLoanClosed(loan, selectedMonth)
             const loanSchedule = buildLoanFullSchedule(loan, selectedMonth, cariAy)
             const forward = loanForwardTotal(loan, selectedMonth, cariAy)
-            const installmentPaid = isLoanInstallmentPaid(loan, selectedMonth, cariAy)
+            const installmentPaid = isProjectedMonth
+              ? false
+              : isLoanInstallmentPaid(loan, selectedMonth, cariAy)
             return (
               <li
                 key={loan.id}
@@ -202,6 +220,9 @@ export default function Loans() {
                       {closed
                         ? `Kapandı · ${formatMonthLabel(getLoanEndMonth(loan))}`
                         : `${paymentsLeft} ay kaldı · ${formatMonthLabel(getLoanStartMonth(loan))} – ${formatMonthLabel(getLoanEndMonth(loan))}`}
+                      {isProjectedMonth && (
+                        <span className="ml-1 font-medium text-blue-600">· tahmini</span>
+                      )}
                     </p>
                     {!closed && (
                       <p className="text-xs text-danger">Kalan toplam: {formatMoney(forward)}</p>
@@ -246,9 +267,11 @@ export default function Loans() {
                       İleri vade özeti
                     </p>
                     <ul className="space-y-1.5 text-xs">
-                      {loanSchedule.map((row) => (
+                      {loanSchedule.map((row) => {
+                        const rowPaid = isLoanMonthProjected(row.month, cariAy) ? false : row.paid
+                        return (
                         <li key={row.id} className="flex justify-between gap-2">
-                          <span className={row.paid ? 'text-gray-400 line-through' : 'text-gray-700'}>
+                          <span className={rowPaid ? 'text-gray-400 line-through' : 'text-gray-700'}>
                             {formatMonthLabel(row.month)}
                             {row.source === 'current' && (
                               <span className="ml-1 text-[10px] text-brand-600">bu ay</span>
@@ -260,11 +283,12 @@ export default function Loans() {
                               <span className="ml-1 text-[10px] text-gray-400">({row.paymentsLeft} ay)</span>
                             )}
                           </span>
-                          <span className={row.paid ? 'text-brand-700' : 'money-negative'}>
+                          <span className={rowPaid ? 'text-brand-700' : 'money-negative'}>
                             {formatMoney(row.amount)}
                           </span>
                         </li>
-                      ))}
+                        )
+                      })}
                     </ul>
                   </div>
                 )}
@@ -308,14 +332,16 @@ export default function Loans() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50">
-                    {scheduleRows.map((row) => (
-                        <tr key={row.id} className={row.paid ? 'bg-brand-50/40' : ''}>
+                    {scheduleRows.map((row) => {
+                      const rowPaid = isLoanMonthProjected(row.month, cariAy) ? false : row.paid
+                      return (
+                        <tr key={row.id} className={rowPaid ? 'bg-brand-50/40' : ''}>
                           <td className="px-3 py-2 font-medium capitalize">
                             {formatMonthLabel(row.month)}
                           </td>
                           <td className="px-3 py-2">{row.bankName}</td>
                           <td
-                            className={`px-3 py-2 font-semibold ${row.paid ? 'text-brand-700 line-through' : 'money-negative'}`}
+                            className={`px-3 py-2 font-semibold ${rowPaid ? 'text-brand-700 line-through' : 'money-negative'}`}
                           >
                             {formatMoney(row.amount)}
                           </td>
@@ -359,7 +385,8 @@ export default function Loans() {
                             ) : null}
                           </td>
                         </tr>
-                      ))}
+                      )
+                    })}
                   </tbody>
                 </table>
               </div>

@@ -1,76 +1,10 @@
 import { useMemo } from 'react'
-
 import { useFinance } from '../context/FinanceContext'
-
-import {
-
-  buildMultiMonthChartData,
-
-  buildHomeReport,
-
-  findFirstSurplusMonth,
-
-} from '../lib/report'
-
+import { buildMultiMonthChartData, buildHomeReport, findFirstSurplusMonth } from '../lib/report'
 import { currentYearMonth, formatMoney, formatMonthLabel } from '../lib/format'
-
 import MonthPicker from '../components/MonthPicker'
-
-import {
-
-  Bar,
-
-  BarChart,
-
-  CartesianGrid,
-
-  Legend,
-
-  ReferenceLine,
-
-  ResponsiveContainer,
-
-  Tooltip,
-
-  XAxis,
-
-  YAxis,
-
-} from 'recharts'
-
+import MonthlyComparisonChart from '../components/MonthlyComparisonChart'
 import { TrendingUp, CalendarCheck, Info } from 'lucide-react'
-
-
-
-function ChartTooltip({ active, payload, label }) {
-
-  if (!active || !payload?.length) return null
-
-  return (
-
-    <div className="rounded-xl border border-gray-100 bg-white p-3 text-xs shadow-lg">
-
-      <p className="mb-2 font-semibold text-gray-900">{label}</p>
-
-      {payload.map((entry) => (
-
-        <p key={entry.dataKey} style={{ color: entry.color }} className="flex justify-between gap-4">
-
-          <span>{entry.name}</span>
-
-          <span className="font-medium">{formatMoney(entry.value)}</span>
-
-        </p>
-
-      ))}
-
-    </div>
-
-  )
-
-}
-
-
 
 function SummaryField({ label, value, tone = 'neutral', sub }) {
 
@@ -303,53 +237,7 @@ export default function Home() {
 
         </div>
 
-        <div className="h-72 w-full">
-
-          <ResponsiveContainer width="100%" height="100%">
-
-            <BarChart data={chartData} margin={{ top: 8, right: 4, left: -8, bottom: 0 }} barGap={4} barCategoryGap="24%">
-
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-
-              <XAxis
-
-                dataKey="monthLabel"
-
-                tick={{ fontSize: 10, fill: '#6b7280' }}
-
-                axisLine={false}
-
-                tickLine={false}
-
-              />
-
-              <YAxis
-
-                tick={{ fontSize: 10, fill: '#6b7280' }}
-
-                axisLine={false}
-
-                tickLine={false}
-
-                tickFormatter={(v) => (v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v)}
-
-              />
-
-              <Tooltip content={<ChartTooltip />} />
-
-              <Legend wrapperStyle={{ fontSize: '10px', paddingTop: '8px' }} iconSize={8} />
-
-              <ReferenceLine y={0} stroke="#e5e7eb" />
-
-              <Bar dataKey="gelir" name="Gelir" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={28} />
-
-              <Bar dataKey="odenecek" name="Ödenecek" fill="#ef4444" radius={[4, 4, 0, 0]} maxBarSize={28} />
-
-            </BarChart>
-
-          </ResponsiveContainer>
-
-        </div>
+        <MonthlyComparisonChart data={chartData} />
 
       </div>
 

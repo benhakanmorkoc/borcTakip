@@ -4,7 +4,7 @@ import { buildHomeReport } from '../lib/report'
 import { formatMoney, formatMonthLabel, currentYearMonth } from '../lib/format'
 import MonthPicker from './MonthPicker'
 
-function SummaryCell({ label, value, tone = 'neutral', sub, projected }) {
+function SummaryCell({ label, value, tone = 'neutral', sub, projected, formatValue = formatMoney, valueClassName = 'mt-1 text-lg font-bold' }) {
   const toneClass =
     tone === 'positive'
       ? 'text-brand-700'
@@ -28,7 +28,7 @@ function SummaryCell({ label, value, tone = 'neutral', sub, projected }) {
         {label}
         {projected && <span className="ml-1 normal-case text-blue-600">(tahmini)</span>}
       </p>
-      <p className={`mt-1 text-lg font-bold ${toneClass}`}>{formatMoney(value)}</p>
+      <p className={`${valueClassName} ${toneClass}`}>{formatValue(value)}</p>
       {sub}
     </div>
   )
@@ -40,6 +40,8 @@ export default function PageSummary({
   monthlyAmount,
   isProjected = false,
   projectedFrom = null,
+  formatValue = formatMoney,
+  valueClassName = 'mt-1 text-lg font-bold',
 }) {
   const { state, selectedMonth, setSelectedMonth } = useFinance()
   const cariAy = currentYearMonth()
@@ -93,6 +95,8 @@ export default function PageSummary({
             tone={cell.tone}
             projected={cell.showProjected !== false && projected && index === 0}
             sub={cell.sub ?? (index === 0 ? projectedNote : null)}
+            formatValue={formatValue}
+            valueClassName={valueClassName}
           />
         ))}
       </div>

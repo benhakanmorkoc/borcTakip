@@ -87,7 +87,7 @@ export default function Dashboard() {
   const debtRows = [
     { label: 'Cari ay kart min. ödeme', value: report.totalCardMinPayment },
     { label: 'Toplam kart kapama', value: report.totalCardPayoff },
-    { label: 'Cari ay kredi taksit', value: report.totalLoanInstallment },
+    { label: 'Cari ay ödenmemiş kredi taksidi', value: report.totalLoanInstallment },
     { label: 'Kredi kalan toplam (ileri)', value: report.totalLoanForward },
     { label: 'Toplam kredi kapama', value: report.totalLoanPayoff },
     { label: 'Cari ay diğer ödeme', value: report.totalOtherPayment },

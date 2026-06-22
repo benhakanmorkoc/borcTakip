@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Plus, Pencil, Trash2, Tag } from 'lucide-react'
 import { useFinance } from '../context/FinanceContext'
-import { buildMonthlyReport } from '../lib/report'
+import { buildHomeReport } from '../lib/report'
 import { formatMoney, formatMonthLabel, currentYearMonth } from '../lib/format'
 import Modal from '../components/Modal'
 import MoneyInput from '../components/MoneyInput'
@@ -22,12 +22,20 @@ export default function Income() {
   const [editing, setEditing] = useState(null)
   const [form, setForm] = useState(emptyForm(state.incomeTypes))
 
+  const cariAy = currentYearMonth()
+
   const monthIncomes = state.incomes.filter((i) => i.month === selectedMonth)
 
-  const monthlyTotal = useMemo(() => {
-    const report = buildMonthlyReport(state, selectedMonth)
-    return report.totalIncome
-  }, [state, selectedMonth])
+  const incomeSummary = useMemo(() => {
+    const report = buildHomeReport(state, selectedMonth, cariAy)
+    return {
+      income: report.totalIncome,
+      expenses: report.totalMinAmount,
+      balance: report.incomeBalance,
+      isProjected: report.isProjected,
+      projectedFrom: report.projectedFrom,
+    }
+  }, [state, selectedMonth, cariAy])
 
   const openNew = () => {
     setEditing(null)
@@ -64,7 +72,19 @@ export default function Income() {
 
   return (
     <div className="space-y-4">
-      <PageSummary monthlyLabel="Bu ay toplam gelir" monthlyAmount={monthlyTotal} />
+      <PageSummary
+        isProjected={incomeSummary.isProjected}
+        projectedFrom={incomeSummary.projectedFrom}
+        fields={[
+          { label: 'Bu ay toplam gelir', value: incomeSummary.income, tone: 'positive' },
+          { label: 'Giderler toplamı', value: incomeSummary.expenses, tone: 'negative' },
+          {
+            label: 'Aylık bakiye',
+            value: incomeSummary.balance,
+            tone: incomeSummary.balance >= 0 ? 'positive' : 'negative',
+          },
+        ]}
+      />
 
       <div className="flex items-center justify-between gap-2">
         <div>
