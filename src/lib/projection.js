@@ -1,4 +1,5 @@
 import { compareYearMonth, currentYearMonth, yearMonthFromDate } from './format'
+import { isNegativeBalancePayment } from './paymentCategories'
 
 export function isProjectedCard(card) {
   return Boolean(card?.isProjected) || String(card?.id || '').startsWith('proj-')
@@ -65,6 +66,7 @@ export function buildProjectedPaymentsForMonth(state, targetMonth, anchorMonth =
 
   return anchorPayments
     .filter((anchor) => {
+      if (Boolean(anchor.isNegativeBalance) || isNegativeBalancePayment(anchor)) return false
       if (isDismissedProjection(state, 'payment', targetMonth, anchor.id)) return false
       if (realTargetPayments.some((r) => r.projectedFromPaymentId === anchor.id)) return false
       return true

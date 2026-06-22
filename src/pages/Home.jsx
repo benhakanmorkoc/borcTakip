@@ -172,9 +172,9 @@ export default function Home() {
 
         <div className="mt-2 rounded-xl border border-red-100 bg-red-50 p-2.5 text-xs">
           <p className="text-gray-500">Ödenecek tutar</p>
-          <p className="text-lg font-bold text-danger">{formatMoney(report.payableAmount)}</p>
+          <p className="text-lg font-bold text-danger">{formatMoney(report.remainingMinAmount)}</p>
           <p className="mt-0.5 text-[10px] text-gray-400">
-            Kalan min + ödenmemiş negatif bakiye
+            Ödenmemiş kart min. + kredi taksit + diğer ödemeler (negatif bakiye hariç)
           </p>
           <div className="mt-1 space-y-0.5 text-[10px] text-gray-500">
             <p className="flex justify-between gap-2">
