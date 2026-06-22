@@ -22,6 +22,8 @@ create table if not exists loans (
   remaining_terms int not null default 1,
   payoff_amount numeric(12,2) not null default 0,
   installment_paid boolean not null default false,
+  start_month text,
+  end_month text,
   future_installments jsonb not null default '[]'::jsonb,
   created_at timestamptz default now()
 );

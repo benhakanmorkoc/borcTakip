@@ -6,19 +6,19 @@ import {
   shiftYearMonth,
   yearMonthFromDate,
 } from './format'
+import {
+  getLoanEndMonth,
+  getLoanStartMonth,
+  getPaymentsRemaining,
+  isLoanActiveInMonth,
+  isLoanClosed,
+  loanForwardTotal,
+  loanMonthlyDue,
+} from './loanUtils'
 
 function creditCardDueAmount(card) {
   if (card.fullyPaid || card.minPaid) return 0
   return Number(card.minPayment) || 0
-}
-
-function loanDueAmountForMonth(loan, yearMonth, referenceMonth) {
-  const diff = monthDiff(referenceMonth, yearMonth)
-  if (diff < 0) return 0
-  const effectiveRemaining = (Number(loan.remainingTerms) || 0) - diff
-  if (effectiveRemaining <= 0) return 0
-  if (diff === 0 && loan.installmentPaid) return 0
-  return Number(loan.monthlyPayment) || 0
 }
 
 function otherDueAmount(payment) {
@@ -32,7 +32,7 @@ function paidLabel(card) {
   return null
 }
 
-export function buildMonthlyReport(state, yearMonth, referenceMonth = currentYearMonth()) {
+export function buildMonthlyReport(state, yearMonth, referenceMonth = yearMonth) {
   const creditCardItems = state.creditCards
     .filter((c) => c.dueMonth === yearMonth)
     .map((c) => {
@@ -50,23 +50,29 @@ export function buildMonthlyReport(state, yearMonth, referenceMonth = currentYea
       }
     })
 
-  const loanItems = state.loans.map((l) => {
-    const totalTerms = Number(l.totalTerms) || Number(l.remainingTerms) || 1
-    const remainingTerms = Number(l.remainingTerms) || 0
-    const dueAmount = loanDueAmountForMonth(l, yearMonth, referenceMonth)
-    const isCurrentMonth = yearMonth === referenceMonth
-    return {
-      id: l.id,
-      category: 'Banka Kredisi',
-      label: l.bankName,
-      amount: Number(l.monthlyPayment) || 0,
-      dueAmount,
-      paid: isCurrentMonth && Boolean(l.installmentPaid),
-      paidLabel: isCurrentMonth && l.installmentPaid ? 'Taksit ödendi' : null,
-      detail: `Vade: ${totalTerms} ay · Kalan: ${remainingTerms} ay · Kapama: ${formatMoney(l.payoffAmount)}`,
-      sortKey: 2,
-    }
-  })
+  const activeLoans = state.loans.filter((l) => !isLoanClosed(l, yearMonth))
+
+  const loanItems = activeLoans
+    .filter((l) => isLoanActiveInMonth(l, yearMonth))
+    .map((l) => {
+      const paymentsLeft = getPaymentsRemaining(l, yearMonth)
+      const dueAmount = loanMonthlyDue(l, yearMonth, referenceMonth)
+      const forwardTotal = loanForwardTotal(l, yearMonth, referenceMonth)
+      const paid = yearMonth === referenceMonth && Boolean(l.installmentPaid)
+      return {
+        id: l.id,
+        category: 'Banka Kredisi',
+        label: l.bankName,
+        amount: forwardTotal,
+        monthlyAmount: Number(l.monthlyPayment) || 0,
+        dueAmount,
+        forwardTotal,
+        paid,
+        paidLabel: paid ? 'Taksit ödendi' : null,
+        detail: `Başlangıç: ${formatMonthShort(getLoanStartMonth(l))} · Bitiş: ${formatMonthShort(getLoanEndMonth(l))} · Kalan: ${paymentsLeft} ay · İleri toplam: ${formatMoney(forwardTotal)}`,
+        sortKey: 2,
+      }
+    })
 
   const otherItems = state.otherPayments
     .filter((p) => yearMonthFromDate(p.dueDate) === yearMonth)
@@ -99,10 +105,14 @@ export function buildMonthlyReport(state, yearMonth, referenceMonth = currentYea
     0
   )
   const totalLoanInstallment = loanItems.reduce((s, i) => s + i.dueAmount, 0)
-  const totalLoanPayoff = state.loans.reduce((s, l) => s + (Number(l.payoffAmount) || 0), 0)
+  const totalLoanForward = activeLoans.reduce(
+    (s, l) => s + loanForwardTotal(l, yearMonth, referenceMonth),
+    0
+  )
+  const totalLoanPayoff = activeLoans.reduce((s, l) => s + (Number(l.payoffAmount) || 0), 0)
   const totalOtherPayment = otherItems.reduce((s, i) => s + i.dueAmount, 0)
 
-  const totalExpenses = totalCardMinPayment + totalLoanInstallment + totalOtherPayment
+  const totalExpenses = totalCardMinPayment + totalLoanForward + totalOtherPayment
   const totalPaidExpenses = allExpenses.reduce((s, i) => s + (i.paid ? i.amount : 0), 0)
 
   const totalIncome = incomeItems.reduce((s, i) => s + i.amount, 0)
@@ -115,6 +125,7 @@ export function buildMonthlyReport(state, yearMonth, referenceMonth = currentYea
     totalCardMinPayment,
     totalCardPayoff,
     totalLoanInstallment,
+    totalLoanForward,
     totalLoanPayoff,
     totalOtherPayment,
     totalExpenses,
@@ -127,6 +138,11 @@ export function buildMonthlyReport(state, yearMonth, referenceMonth = currentYea
   }
 }
 
+function formatMonthShort(yearMonth) {
+  const [y, m] = yearMonth.split('-').map(Number)
+  return new Date(y, m - 1, 1).toLocaleDateString('tr-TR', { month: 'short', year: '2-digit' })
+}
+
 function collectMonthsFromState(state, referenceMonth) {
   const months = new Set([referenceMonth])
 
@@ -137,10 +153,15 @@ function collectMonthsFromState(state, referenceMonth) {
     if (ym) months.add(ym)
   })
 
-  const maxLoanTerms = Math.max(0, ...state.loans.map((l) => Number(l.remainingTerms) || 0))
-  for (let i = 0; i <= maxLoanTerms; i++) {
-    months.add(shiftYearMonth(referenceMonth, i))
-  }
+  state.loans.forEach((l) => {
+    const start = getLoanStartMonth(l)
+    const end = getLoanEndMonth(l)
+    let cur = start
+    while (compareYearMonth(cur, end) <= 0) {
+      months.add(cur)
+      cur = shiftYearMonth(cur, 1)
+    }
+  })
 
   return [...months].sort(compareYearMonth)
 }
@@ -162,16 +183,16 @@ export function buildChartMonths(state, referenceMonth = currentYearMonth()) {
 
 export function buildMultiMonthChartData(state, referenceMonth = currentYearMonth()) {
   return buildChartMonths(state, referenceMonth).map((yearMonth) => {
-    const report = buildMonthlyReport(state, yearMonth, referenceMonth)
+    const report = buildMonthlyReport(state, yearMonth, yearMonth)
     return {
       yearMonth,
       monthLabel: yearMonth.slice(5) + '/' + yearMonth.slice(2, 4),
       gelir: report.totalIncome,
       kartMin: report.totalCardMinPayment,
-      krediTaksit: report.totalLoanInstallment,
+      krediTaksit: report.totalLoanForward,
       digerOdeme: report.totalOtherPayment,
-      toplamGider: report.totalExpenses,
-      bakiye: report.balance,
+      toplamGider: report.totalCardMinPayment + report.totalLoanForward + report.totalOtherPayment,
+      bakiye: report.totalIncome - (report.totalCardMinPayment + report.totalLoanForward + report.totalOtherPayment),
     }
   })
 }
@@ -180,9 +201,10 @@ export function findFirstSurplusMonth(state, referenceMonth = currentYearMonth()
   const months = buildChartMonths(state, referenceMonth)
   for (const yearMonth of months) {
     if (compareYearMonth(yearMonth, referenceMonth) < 0) continue
-    const report = buildMonthlyReport(state, yearMonth, referenceMonth)
-    if (report.totalIncome > report.totalExpenses) {
-      return { yearMonth, report }
+    const report = buildMonthlyReport(state, yearMonth, yearMonth)
+    const gider = report.totalCardMinPayment + report.totalLoanForward + report.totalOtherPayment
+    if (report.totalIncome > gider) {
+      return { yearMonth, report: { ...report, totalExpenses: gider, balance: report.totalIncome - gider } }
     }
   }
   return null

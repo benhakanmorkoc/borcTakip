@@ -76,7 +76,10 @@ function Section({ title, items, emptyText, variant }) {
 
 export default function Dashboard() {
   const { state, selectedMonth, setSelectedMonth } = useFinance()
-  const report = useMemo(() => buildMonthlyReport(state, selectedMonth), [state, selectedMonth])
+  const report = useMemo(
+    () => buildMonthlyReport(state, selectedMonth, selectedMonth),
+    [state, selectedMonth]
+  )
 
   const balanceTone = report.balance >= 0 ? 'positive' : 'negative'
 
@@ -84,6 +87,7 @@ export default function Dashboard() {
     { label: 'Cari ay kart min. ödeme', value: report.totalCardMinPayment },
     { label: 'Toplam kart kapama', value: report.totalCardPayoff },
     { label: 'Cari ay kredi taksit', value: report.totalLoanInstallment },
+    { label: 'Kredi kalan toplam (ileri)', value: report.totalLoanForward },
     { label: 'Toplam kredi kapama', value: report.totalLoanPayoff },
     { label: 'Cari ay diğer ödeme', value: report.totalOtherPayment },
   ]

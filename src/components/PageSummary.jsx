@@ -7,7 +7,7 @@ import MonthPicker from './MonthPicker'
 export default function PageSummary({ monthlyLabel, monthlyAmount }) {
   const { state, selectedMonth, setSelectedMonth } = useFinance()
   const report = useMemo(
-    () => buildMonthlyReport(state, selectedMonth),
+    () => buildMonthlyReport(state, selectedMonth, selectedMonth),
     [state, selectedMonth]
   )
 

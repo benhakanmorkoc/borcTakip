@@ -41,9 +41,11 @@ export default function Home() {
   const chartData = useMemo(() => buildMultiMonthChartData(state), [state])
   const surplus = useMemo(() => findFirstSurplusMonth(state), [state])
   const currentReport = useMemo(
-    () => buildMonthlyReport(state, selectedMonth),
+    () => buildMonthlyReport(state, selectedMonth, selectedMonth),
     [state, selectedMonth]
   )
+
+  const chartGider = currentReport.totalCardMinPayment + currentReport.totalLoanForward + currentReport.totalOtherPayment
 
   return (
     <div className="space-y-4">
@@ -79,7 +81,10 @@ export default function Home() {
           </div>
           <div className="rounded-xl bg-red-50 p-2.5">
             <p className="text-gray-500">Seçili ay gider</p>
-            <p className="font-bold text-danger">{formatMoney(currentReport.totalExpenses)}</p>
+            <p className="font-bold text-danger">{formatMoney(chartGider)}</p>
+            <p className="mt-0.5 text-[10px] text-gray-400">
+              Kredi dahil kalan: {formatMoney(currentReport.totalLoanForward)}
+            </p>
           </div>
         </div>
       </div>

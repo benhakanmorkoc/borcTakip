@@ -8,19 +8,21 @@ import {
   createFutureInstallment,
   scheduleTotals,
 } from '../lib/loanSchedule'
+import { buildLoanPayload, getPaymentsRemaining, isLoanClosed, loanForwardTotal, getLoanEndMonth, getLoanStartMonth } from '../lib/loanUtils'
 import { formatMoney, formatMonthLabel, shiftYearMonth } from '../lib/format'
 import Modal from '../components/Modal'
 import MoneyInput from '../components/MoneyInput'
 import PaidToggle from '../components/PaidToggle'
 import PageSummary from '../components/PageSummary'
 
-const emptyForm = () => ({
+const emptyForm = (startMonth) => ({
   bankName: '',
   monthlyPayment: 0,
   totalTerms: 12,
-  remainingTerms: 12,
+  remainingTerms: 4,
   payoffAmount: 0,
   installmentPaid: false,
+  startMonth: startMonth || '',
   futureInstallments: [],
 })
 
@@ -38,16 +40,21 @@ export default function Loans() {
   const [futureOpen, setFutureOpen] = useState(false)
   const [editing, setEditing] = useState(null)
   const [editingFuture, setEditingFuture] = useState(null)
-  const [form, setForm] = useState(emptyForm)
+  const [form, setForm] = useState(() => emptyForm(''))
   const [futureForm, setFutureForm] = useState(emptyFutureForm('', selectedMonth))
 
   const monthlyTotal = useMemo(() => {
-    const report = buildMonthlyReport(state, selectedMonth)
+    const report = buildMonthlyReport(state, selectedMonth, selectedMonth)
     return report.totalLoanInstallment
   }, [state, selectedMonth])
 
+  const forwardTotal = useMemo(() => {
+    const report = buildMonthlyReport(state, selectedMonth, selectedMonth)
+    return report.totalLoanForward
+  }, [state, selectedMonth])
+
   const scheduleRows = useMemo(
-    () => buildAllLoanSchedules(state.loans, selectedMonth),
+    () => buildAllLoanSchedules(state.loans, selectedMonth, selectedMonth),
     [state.loans, selectedMonth]
   )
 
@@ -55,7 +62,7 @@ export default function Loans() {
 
   const openNew = () => {
     setEditing(null)
-    setForm(emptyForm())
+    setForm(emptyForm(selectedMonth))
     setOpen(true)
   }
 
@@ -68,6 +75,7 @@ export default function Loans() {
       remainingTerms: loan.remainingTerms ?? 1,
       payoffAmount: loan.payoffAmount,
       installmentPaid: Boolean(loan.installmentPaid),
+      startMonth: loan.startMonth || getLoanStartMonth(loan),
       futureInstallments: loan.futureInstallments || [],
     })
     setOpen(true)
@@ -131,9 +139,10 @@ export default function Loans() {
   const handleSubmit = (e) => {
     e.preventDefault()
     if (!form.bankName.trim()) return
-    const totalTerms = Math.max(1, Number(form.totalTerms) || 1)
-    const remainingTerms = Math.min(totalTerms, Math.max(0, Number(form.remainingTerms) || 0))
-    const payload = { ...form, totalTerms, remainingTerms }
+    const payload = buildLoanPayload(
+      { ...form, startMonth: form.startMonth || selectedMonth },
+      selectedMonth
+    )
     if (editing) updateLoan(editing, payload)
     else addLoan(payload)
     setOpen(false)
@@ -142,6 +151,11 @@ export default function Loans() {
   return (
     <div className="space-y-4">
       <PageSummary monthlyLabel="Bu ay kredi taksit" monthlyAmount={monthlyTotal} />
+
+      <div className="card px-4 py-3 text-sm">
+        <span className="text-gray-500">Seçili aydan kalan kredi toplamı: </span>
+        <span className="font-bold text-danger">{formatMoney(forwardTotal)}</span>
+      </div>
 
       <div className="flex items-center justify-between">
         <div>
@@ -160,16 +174,23 @@ export default function Loans() {
         <ul className="space-y-3">
           {state.loans.map((loan) => {
             const totalTerms = Number(loan.totalTerms) || Number(loan.remainingTerms) || 1
-            const remainingTerms = Number(loan.remainingTerms) || 0
-            const loanSchedule = buildLoanFullSchedule(loan, selectedMonth)
+            const paymentsLeft = getPaymentsRemaining(loan, selectedMonth)
+            const closed = isLoanClosed(loan, selectedMonth)
+            const loanSchedule = buildLoanFullSchedule(loan, selectedMonth, selectedMonth)
+            const forward = loanForwardTotal(loan, selectedMonth, selectedMonth)
             return (
-              <li key={loan.id} className="card p-4">
+              <li key={loan.id} className={`card p-4 ${closed ? 'opacity-60' : ''}`}>
                 <div className="flex items-start justify-between gap-2">
                   <div>
                     <p className="font-bold text-gray-900">{loan.bankName}</p>
                     <p className="text-xs text-gray-500">
-                      {remainingTerms} / {totalTerms} ay kaldı
+                      {closed
+                        ? `Kapandı · ${formatMonthLabel(getLoanEndMonth(loan))}`
+                        : `${paymentsLeft} ay kaldı · ${formatMonthLabel(getLoanStartMonth(loan))} – ${formatMonthLabel(getLoanEndMonth(loan))}`}
                     </p>
+                    {!closed && (
+                      <p className="text-xs text-danger">Kalan toplam: {formatMoney(forward)}</p>
+                    )}
                   </div>
                   <div className="flex gap-1">
                     <button type="button" onClick={() => openEdit(loan)} className="btn-danger">
@@ -194,15 +215,17 @@ export default function Loans() {
                     <p className="font-semibold">{formatMoney(loan.payoffAmount)}</p>
                   </div>
                 </div>
-                <div className="mt-3">
-                  <PaidToggle
-                    label="Taksit ödendi"
-                    checked={Boolean(loan.installmentPaid)}
-                    onChange={(v) => updateLoan(loan.id, { installmentPaid: v })}
-                  />
-                </div>
+                {!closed && (
+                  <div className="mt-3">
+                    <PaidToggle
+                      label="Taksit ödendi"
+                      checked={Boolean(loan.installmentPaid)}
+                      onChange={(v) => updateLoan(loan.id, { installmentPaid: v })}
+                    />
+                  </div>
+                )}
 
-                {loanSchedule.length > 0 && (
+                {loanSchedule.length > 0 && !closed && (
                   <div className="mt-4 border-t border-gray-100 pt-3">
                     <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
                       İleri vade özeti
@@ -212,8 +235,14 @@ export default function Loans() {
                         <li key={row.id} className="flex justify-between gap-2">
                           <span className={row.paid ? 'text-gray-400 line-through' : 'text-gray-700'}>
                             {formatMonthLabel(row.month)}
+                            {row.source === 'current' && (
+                              <span className="ml-1 text-[10px] text-brand-600">bu ay</span>
+                            )}
                             {row.source === 'manual' && (
-                              <span className="ml-1 text-[10px] text-brand-600">manuel</span>
+                              <span className="ml-1 text-[10px] text-purple-600">manuel</span>
+                            )}
+                            {row.paymentsLeft != null && (
+                              <span className="ml-1 text-[10px] text-gray-400">({row.paymentsLeft} ay)</span>
                             )}
                           </span>
                           <span className={row.paid ? 'text-brand-700' : 'money-negative'}>
@@ -356,6 +385,16 @@ export default function Loans() {
             onChange={(v) => setForm((f) => ({ ...f, monthlyPayment: v }))}
             required
           />
+          <div>
+            <label className="field-label">İlk taksit ayı *</label>
+            <input
+              type="month"
+              className="field-input"
+              value={form.startMonth || selectedMonth}
+              onChange={(e) => setForm((f) => ({ ...f, startMonth: e.target.value }))}
+              required
+            />
+          </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="field-label">Toplam vade (ay) *</label>
@@ -369,7 +408,7 @@ export default function Loans() {
               />
             </div>
             <div>
-              <label className="field-label">Kalan vade (ay) *</label>
+              <label className="field-label">Kalan taksit (ay) *</label>
               <input
                 type="number"
                 min="0"
@@ -378,6 +417,9 @@ export default function Loans() {
                 onChange={(e) => setForm((f) => ({ ...f, remainingTerms: e.target.value }))}
                 required
               />
+              <p className="mt-1 text-[10px] text-gray-400">
+                Bu aydan itibaren ödenecek taksit sayısı
+              </p>
             </div>
           </div>
           <MoneyInput
