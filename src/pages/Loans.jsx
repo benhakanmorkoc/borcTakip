@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Plus, Pencil, Trash2, Calendar } from 'lucide-react'
 import { useFinance } from '../context/FinanceContext'
-import { buildMonthlyReport } from '../lib/report'
+import { buildHomeReport } from '../lib/report'
 import {
   buildAllLoanSchedules,
   buildLoanFullSchedule,
@@ -9,7 +9,7 @@ import {
   scheduleTotals,
 } from '../lib/loanSchedule'
 import { buildLoanPayload, getPaymentsRemaining, isLoanClosed, loanForwardTotal, getLoanEndMonth, getLoanStartMonth } from '../lib/loanUtils'
-import { formatMoney, formatMonthLabel, shiftYearMonth } from '../lib/format'
+import { formatMoney, formatMonthLabel, shiftYearMonth, currentYearMonth } from '../lib/format'
 import Modal from '../components/Modal'
 import MoneyInput from '../components/MoneyInput'
 import PaidToggle from '../components/PaidToggle'
@@ -43,15 +43,17 @@ export default function Loans() {
   const [form, setForm] = useState(() => emptyForm(''))
   const [futureForm, setFutureForm] = useState(emptyFutureForm('', selectedMonth))
 
-  const monthlyTotal = useMemo(() => {
-    const report = buildMonthlyReport(state, selectedMonth, selectedMonth)
-    return report.totalLoanInstallment
-  }, [state, selectedMonth])
+  const cariAy = currentYearMonth()
 
-  const forwardTotal = useMemo(() => {
-    const report = buildMonthlyReport(state, selectedMonth, selectedMonth)
-    return report.totalLoanForward
-  }, [state, selectedMonth])
+  const loanSummary = useMemo(() => {
+    const report = buildHomeReport(state, selectedMonth, cariAy)
+    return {
+      gross: report.totalLoanGross,
+      unpaid: report.totalLoanInstallment,
+      payoff: report.totalLoanPayoff,
+      forward: report.totalLoanForward,
+    }
+  }, [state, selectedMonth, cariAy])
 
   const scheduleRows = useMemo(
     () => buildAllLoanSchedules(state.loans, selectedMonth, selectedMonth),
@@ -150,11 +152,17 @@ export default function Loans() {
 
   return (
     <div className="space-y-4">
-      <PageSummary monthlyLabel="Bu ay kredi taksit" monthlyAmount={monthlyTotal} />
+      <PageSummary
+        fields={[
+          { label: 'Bu ay kredi taksit', value: loanSummary.gross },
+          { label: 'Aylık bakiye', value: loanSummary.unpaid, tone: 'negative' },
+          { label: 'Kredi toplam kapama', value: loanSummary.payoff, tone: 'warning' },
+        ]}
+      />
 
       <div className="card px-4 py-3 text-sm">
         <span className="text-gray-500">Seçili aydan kalan kredi toplamı: </span>
-        <span className="font-bold text-danger">{formatMoney(forwardTotal)}</span>
+        <span className="font-bold text-danger">{formatMoney(loanSummary.forward)}</span>
       </div>
 
       <div className="flex items-center justify-between">

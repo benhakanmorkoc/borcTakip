@@ -104,7 +104,7 @@ export function buildProjectedState(state, targetMonth, anchorMonth = currentYea
   if (!monthHasOtherData(state, targetMonth) && monthHasOtherData(state, anchorMonth)) {
     projectedParts.push('other')
     const anchorOthers = state.otherPayments.filter(
-      (p) => yearMonthFromDate(p.dueDate) === anchorMonth && !isNegativeBalancePayment(p)
+      (p) => yearMonthFromDate(p.dueDate) === anchorMonth
     )
     next = {
       ...next,
@@ -115,8 +115,10 @@ export function buildProjectedState(state, targetMonth, anchorMonth = currentYea
           return {
             ...p,
             id: `proj-${p.id}-${targetMonth}`,
+            sourcePaymentId: p.id,
             dueDate: `${targetMonth}-${day}`,
             paid: false,
+            isProjected: true,
           }
         }),
       ],
@@ -153,6 +155,27 @@ export function buildCreditCardsForMonth(state, yearMonth, cariAy = currentYearM
     cards,
     isProjected: cardsAreProjected,
     projectedFrom: cardsAreProjected ? cariAy : null,
+  }
+}
+
+/** Seçili ay için diğer ödeme listesi (cari aydan sonra tahmini kopyalar dahil) */
+export function isProjectedPayment(payment) {
+  return Boolean(payment?.isProjected) || String(payment?.id || '').startsWith('proj-')
+}
+
+export function buildOtherPaymentsForMonth(state, yearMonth, cariAy = currentYearMonth()) {
+  const projection = buildProjectedState(state, yearMonth, cariAy)
+  const payments = projection.state.otherPayments
+    .filter((p) => yearMonthFromDate(p.dueDate) === yearMonth)
+    .sort((a, b) => a.dueDate.localeCompare(b.dueDate))
+  const paymentsAreProjected =
+    compareYearMonth(yearMonth, cariAy) > 0 &&
+    !monthHasOtherData(state, yearMonth) &&
+    projection.projectedParts.includes('other')
+  return {
+    payments,
+    isProjected: paymentsAreProjected,
+    projectedFrom: paymentsAreProjected ? cariAy : null,
   }
 }
 
