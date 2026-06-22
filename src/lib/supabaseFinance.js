@@ -30,6 +30,12 @@ function toCreditCard(row, userId) {
   }
 }
 
+function parseFutureInstallments(raw) {
+  if (!raw) return []
+  if (Array.isArray(raw)) return raw
+  return []
+}
+
 function fromLoan(row) {
   return {
     id: row.id,
@@ -39,6 +45,7 @@ function fromLoan(row) {
     remainingTerms: Number(row.remaining_terms) || 0,
     payoffAmount: Number(row.payoff_amount) || 0,
     installmentPaid: Boolean(row.installment_paid),
+    futureInstallments: parseFutureInstallments(row.future_installments),
   }
 }
 
@@ -51,6 +58,7 @@ function toLoan(row, userId) {
     remaining_terms: row.remainingTerms ?? 1,
     payoff_amount: row.payoffAmount ?? 0,
     installment_paid: Boolean(row.installmentPaid),
+    future_installments: row.futureInstallments ?? [],
   }
 }
 
@@ -255,6 +263,7 @@ export const financeApi = {
         remaining_terms: data.remainingTerms ?? 0,
         payoff_amount: data.payoffAmount ?? 0,
         installment_paid: Boolean(data.installmentPaid),
+        future_installments: data.futureInstallments ?? [],
       })
       .eq('id', id)
       .select()
