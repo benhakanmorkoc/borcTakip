@@ -75,9 +75,11 @@ export function buildProjectedState(state, targetMonth, anchorMonth = currentYea
         ...anchorCards.map((c) => ({
           ...c,
           id: `proj-${c.id}-${targetMonth}`,
+          sourceCardId: c.id,
           dueMonth: targetMonth,
           minPaid: false,
           fullyPaid: false,
+          isProjected: true,
         })),
       ],
     }
@@ -125,17 +127,32 @@ export function buildProjectedState(state, targetMonth, anchorMonth = currentYea
 }
 
 export function buildHomeReport(state, yearMonth, cariAy = currentYearMonth()) {
-  const { state: effectiveState, isProjected, projectedParts } = buildProjectedState(
-    state,
-    yearMonth,
-    cariAy
-  )
-  const report = buildMonthlyReport(effectiveState, yearMonth, yearMonth)
+  const projection = buildProjectedState(state, yearMonth, cariAy)
+  const report = buildMonthlyReport(projection.state, yearMonth, yearMonth)
   return {
     ...report,
-    isProjected,
-    projectedParts,
-    projectedFrom: isProjected ? cariAy : null,
+    isProjected: projection.isProjected,
+    projectedParts: projection.projectedParts,
+    projectedFrom: projection.isProjected ? cariAy : null,
+  }
+}
+
+export function isProjectedCard(card) {
+  return Boolean(card?.isProjected) || String(card?.id || '').startsWith('proj-')
+}
+
+/** Seçili ay için kart listesi (cari aydan sonra tahmini kopyalar dahil) */
+export function buildCreditCardsForMonth(state, yearMonth, cariAy = currentYearMonth()) {
+  const projection = buildProjectedState(state, yearMonth, cariAy)
+  const cards = projection.state.creditCards.filter((c) => c.dueMonth === yearMonth)
+  const cardsAreProjected =
+    compareYearMonth(yearMonth, cariAy) > 0 &&
+    !monthHasCardData(state, yearMonth) &&
+    projection.projectedParts.includes('cards')
+  return {
+    cards,
+    isProjected: cardsAreProjected,
+    projectedFrom: cardsAreProjected ? cariAy : null,
   }
 }
 
