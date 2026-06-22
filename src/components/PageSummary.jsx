@@ -28,7 +28,7 @@ function SummaryCell({ label, value, tone = 'neutral', sub, projected, formatVal
         {label}
         {projected && <span className="ml-1 normal-case text-blue-600">(tahmini)</span>}
       </p>
-      <p className={`${valueClassName} ${toneClass}`}>{formatValue(value)}</p>
+      <p className={`${valueClassName} ${toneClass} tabular-nums`}>{formatValue(value)}</p>
       {sub}
     </div>
   )
@@ -41,7 +41,7 @@ export default function PageSummary({
   isProjected = false,
   projectedFrom = null,
   formatValue = formatMoney,
-  valueClassName = 'mt-1 text-lg font-bold',
+  valueClassName = 'mt-1 text-sm font-bold leading-tight tabular-nums',
 }) {
   const { state, selectedMonth, setSelectedMonth } = useFinance()
   const cariAy = currentYearMonth()

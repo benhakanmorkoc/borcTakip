@@ -30,7 +30,7 @@ function SummaryField({ label, value, tone = 'neutral', sub }) {
 
       <p className="text-gray-500">{label}</p>
 
-      <p className={`font-bold ${toneClass}`}>{formatMoney(value)}</p>
+      <p className={`text-sm font-bold tabular-nums ${toneClass}`}>{formatMoney(value)}</p>
 
       {sub}
 
@@ -261,13 +261,13 @@ export default function Home() {
 
                 <th className="px-3 py-2 font-semibold">Ay</th>
 
-                <th className="px-3 py-2 font-semibold">Gelir</th>
+                <th className="px-2 py-2 font-semibold">Gelir</th>
 
-                <th className="px-3 py-2 font-semibold">Giderler</th>
+                <th className="px-2 py-2 font-semibold">Giderler</th>
 
-                <th className="px-3 py-2 font-semibold">Ödenecek</th>
+                <th className="px-2 py-2 font-semibold">Ödenecek</th>
 
-                <th className="px-3 py-2 font-semibold">Bakiye</th>
+                <th className="px-2 py-2 font-semibold">Bakiye</th>
 
               </tr>
 
@@ -303,13 +303,13 @@ export default function Home() {
 
                     </td>
 
-                    <td className="px-3 py-2 text-brand-700">{formatMoney(row.gelir)}</td>
+                    <td className="whitespace-nowrap px-2 py-2 text-[11px] text-brand-700 tabular-nums">{formatMoney(row.gelir)}</td>
 
-                    <td className="px-3 py-2 text-gray-900">{formatMoney(row.giderler)}</td>
+                    <td className="whitespace-nowrap px-2 py-2 text-[11px] text-gray-900 tabular-nums">{formatMoney(row.giderler)}</td>
 
-                    <td className="px-3 py-2 text-danger">{formatMoney(row.odenecek)}</td>
+                    <td className="whitespace-nowrap px-2 py-2 text-[11px] text-danger tabular-nums">{formatMoney(row.odenecek)}</td>
 
-                    <td className={`px-3 py-2 font-semibold ${row.bakiye >= 0 ? 'text-brand-700' : 'text-danger'}`}>
+                    <td className={`whitespace-nowrap px-2 py-2 text-[11px] font-semibold tabular-nums ${row.bakiye >= 0 ? 'text-brand-700' : 'text-danger'}`}>
 
                       {row.bakiye >= 0 ? '+' : ''}
 

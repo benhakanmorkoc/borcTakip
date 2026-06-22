@@ -3,21 +3,13 @@ export function formatMoney(value, currency = 'TRY') {
   return new Intl.NumberFormat('tr-TR', {
     style: 'currency',
     currency,
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(num)
-}
-
-/** Özet kartları vb. — kuruş hanesi olmadan */
-export function formatMoneyWhole(value, currency = 'TRY') {
-  const num = Number(value) || 0
-  return new Intl.NumberFormat('tr-TR', {
-    style: 'currency',
-    currency,
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   }).format(num)
 }
+
+/** @deprecated formatMoney ile aynı — geriye dönük uyumluluk */
+export const formatMoneyWhole = formatMoney
 
 export function parseMoneyInput(value) {
   if (value === '' || value == null) return 0

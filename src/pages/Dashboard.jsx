@@ -14,7 +14,7 @@ function SummaryCard({ title, amount, tone, icon: Icon }) {
         <Icon size={16} />
         <span className="text-xs font-semibold uppercase tracking-wide">{title}</span>
       </div>
-      <p className={`text-xl font-bold ${toneClass}`}>{formatMoney(amount)}</p>
+      <p className={`text-lg font-bold tabular-nums ${toneClass}`}>{formatMoney(amount)}</p>
     </div>
   )
 }
