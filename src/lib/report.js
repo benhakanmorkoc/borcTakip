@@ -43,6 +43,16 @@ function paidLabel(card) {
   return null
 }
 
+/** Diğer ödemelerde "Negatif Bakiye" tipi ayrı kategoride */
+export function isNegativeBalanceType(type) {
+  const t = String(type || '').toLocaleLowerCase('tr-TR')
+  return t.includes('negatif') && t.includes('bakiye')
+}
+
+function isNegativeBalancePayment(payment) {
+  return isNegativeBalanceType(payment.type)
+}
+
 function monthHasCardData(state, yearMonth) {
   return state.creditCards.some((c) => c.dueMonth === yearMonth)
 }
@@ -190,6 +200,7 @@ export function buildMonthlyReport(state, yearMonth, referenceMonth = yearMonth)
     .map((p) => {
       const amount = Number(p.amount) || 0
       const paid = Boolean(p.paid)
+      const isNegativeBalance = isNegativeBalancePayment(p)
       return {
         id: p.id,
         category: p.type,
@@ -198,11 +209,15 @@ export function buildMonthlyReport(state, yearMonth, referenceMonth = yearMonth)
         dueAmount: otherDueAmount(p),
         paidAmount: otherPaidAmount(p),
         paid,
+        isNegativeBalance,
         paidLabel: paid ? 'Ödendi' : null,
         detail: p.dueDate,
-        sortKey: 3,
+        sortKey: isNegativeBalance ? 4 : 3,
       }
     })
+
+  const regularOtherItems = otherItems.filter((i) => !i.isNegativeBalance)
+  const negativeBalanceItems = otherItems.filter((i) => i.isNegativeBalance)
 
   const incomeItems = state.incomes
     .filter((i) => i.month === yearMonth)
@@ -234,15 +249,21 @@ export function buildMonthlyReport(state, yearMonth, referenceMonth = yearMonth)
   )
   const totalLoanPayoff = activeLoans.reduce((s, l) => s + (Number(l.payoffAmount) || 0), 0)
 
-  const totalOtherGross = otherItems.reduce((s, i) => s + i.amount, 0)
-  const totalOtherPaid = otherItems.reduce((s, i) => s + i.paidAmount, 0)
-  const totalOtherPayment = otherItems.reduce((s, i) => s + i.dueAmount, 0)
+  const totalOtherGross = regularOtherItems.reduce((s, i) => s + i.amount, 0)
+  const totalOtherPaid = regularOtherItems.reduce((s, i) => s + i.paidAmount, 0)
+  const totalOtherPayment = regularOtherItems.reduce((s, i) => s + i.dueAmount, 0)
 
+  const totalNegativeBalanceGross = negativeBalanceItems.reduce((s, i) => s + i.amount, 0)
+  const totalNegativeBalancePaid = negativeBalanceItems.reduce((s, i) => s + i.paidAmount, 0)
+  const totalNegativeBalanceDue = negativeBalanceItems.reduce((s, i) => s + i.dueAmount, 0)
+
+  // Toplam Min = kart min + kredi taksit + diğer ödemeler (negatif bakiye hariç)
   const totalMinAmount = totalCardMinGross + totalLoanGross + totalOtherGross
-  const totalPaidAmount = totalCardMinPaid + totalLoanPaid + totalOtherPaid
-  const remainingMinAmount = totalMinAmount - totalPaidAmount
-  const payableAmount = remainingMinAmount
-  const remainingTotalDebt = totalCardPayoff + totalLoanPayoff
+  const totalPaidAmount =
+    totalCardMinPaid + totalLoanPaid + totalOtherPaid + totalNegativeBalancePaid
+  const remainingMinAmount = totalMinAmount - (totalCardMinPaid + totalLoanPaid + totalOtherPaid)
+  const payableAmount = remainingMinAmount + totalNegativeBalanceDue
+  const grandTotalAllDebt = totalCardPayoff + totalLoanPayoff + totalNegativeBalanceGross
 
   const totalExpenses = payableAmount
   const totalPaidExpenses = totalPaidAmount
@@ -266,17 +287,21 @@ export function buildMonthlyReport(state, yearMonth, referenceMonth = yearMonth)
     totalOtherGross,
     totalOtherPaid,
     totalOtherPayment,
+    totalNegativeBalanceGross,
+    totalNegativeBalancePaid,
+    totalNegativeBalanceDue,
     totalMinAmount,
     totalPaidAmount,
     remainingMinAmount,
     payableAmount,
-    remainingTotalDebt,
+    remainingTotalDebt: grandTotalAllDebt,
+    grandTotalAllDebt,
     totalExpenses,
     totalPaidExpenses,
     totalIncome,
     balance,
     totalDebt: totalCardPayoff,
-    grandTotalDebt: remainingTotalDebt,
+    grandTotalDebt: grandTotalAllDebt,
   }
 }
 
