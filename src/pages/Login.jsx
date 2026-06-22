@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { LogIn } from 'lucide-react'
+import { supabaseConfig, supabaseEnabled } from '../lib/supabase'
+import { LogIn, AlertTriangle } from 'lucide-react'
 
 export default function Login() {
   const { signIn } = useAuth()
@@ -32,6 +33,23 @@ export default function Login() {
           <h1 className="text-2xl font-bold text-gray-900">Borç Takip</h1>
           <p className="mt-1 text-sm text-gray-500">Hesabınıza giriş yapın</p>
         </div>
+
+        {!supabaseEnabled && (
+          <div className="mb-4 flex gap-2 rounded-xl bg-amber-50 px-3 py-3 text-xs text-amber-900">
+            <AlertTriangle className="shrink-0" size={16} />
+            <div>
+              <p className="font-semibold">Supabase bağlantısı yapılandırılmamış</p>
+              <p className="mt-1">
+                Vercel → Settings → Environment Variables:
+                <br />
+                <code>VITE_SUPABASE_URL</code> {supabaseConfig.hasUrl ? '✓' : '✗'}
+                <br />
+                <code>VITE_SUPABASE_ANON_KEY</code> {supabaseConfig.hasKey ? '✓' : '✗'}
+              </p>
+              <p className="mt-1">Değişkenleri ekledikten sonra <strong>Redeploy</strong> gerekir.</p>
+            </div>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>

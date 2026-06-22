@@ -1,7 +1,7 @@
 import { NavLink, Outlet } from 'react-router-dom'
-import { CreditCard, Landmark, Receipt, Wallet, LayoutDashboard, Home, LogOut } from 'lucide-react'
+import { CreditCard, Landmark, Receipt, Wallet, LayoutDashboard, Home, LogOut, AlertTriangle } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
-
+import { supabaseConfig, supabaseEnabled } from '../lib/supabase'
 const tabs = [
   { to: '/', label: 'Ana', icon: Home, end: true },
   { to: '/ozet', label: 'Özet', icon: LayoutDashboard },
@@ -39,9 +39,20 @@ export default function Layout() {
       </header>
 
       <main className="px-4 pb-28 pt-4">
+        {!supabaseEnabled && import.meta.env.PROD && (
+          <div className="mb-4 flex gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-3 text-xs text-amber-950">
+            <AlertTriangle className="shrink-0" size={16} />
+            <div>
+              <p className="font-semibold">Supabase bağlı değil — veriler yalnızca bu cihazda</p>
+              <p className="mt-1">
+                Vercel Environment Variables eksik veya deploy öncesi eklenmemiş.
+                URL: {supabaseConfig.hasUrl ? '✓' : '✗'} · Key: {supabaseConfig.hasKey ? '✓' : '✗'}
+              </p>
+            </div>
+          </div>
+        )}
         <Outlet />
       </main>
-
       <nav className="fixed bottom-0 left-1/2 z-20 w-full max-w-phone -translate-x-1/2 border-t border-gray-200 bg-white/95 backdrop-blur pb-safe">
         <div className="flex items-stretch overflow-x-auto scrollbar-hide px-0.5 pt-1">
           {tabs.map(({ to, label, icon: Icon, end }) => (
