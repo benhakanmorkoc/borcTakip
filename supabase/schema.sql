@@ -10,6 +10,7 @@ create table if not exists credit_cards (
   due_month text not null, -- YYYY-MM
   min_paid boolean not null default false,
   fully_paid boolean not null default false,
+  projected_from_card_id uuid references credit_cards(id) on delete set null,
   created_at timestamptz default now()
 );
 
@@ -38,6 +39,7 @@ create table if not exists other_payments (
   note text,
   paid boolean not null default false,
   is_negative_balance boolean not null default false,
+  projected_from_payment_id uuid references other_payments(id) on delete set null,
   created_at timestamptz default now()
 );
 

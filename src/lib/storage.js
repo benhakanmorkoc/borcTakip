@@ -22,6 +22,7 @@ function normalizeOtherPayment(payment) {
 export function normalizeFinanceState(state) {
   return {
     ...state,
+    dismissedProjections: state.dismissedProjections || [],
     otherPayments: (state.otherPayments || []).map(normalizeOtherPayment),
     paymentTypes: [...new Set([...(state.paymentTypes || []), ...DEFAULT_PAYMENT_TYPES])],
   }
@@ -32,6 +33,7 @@ export const emptyState = () => ({
   loans: [],
   otherPayments: [],
   incomes: [],
+  dismissedProjections: [],
   paymentTypes: [...DEFAULT_PAYMENT_TYPES],
   incomeTypes: [...DEFAULT_INCOME_TYPES],
 })

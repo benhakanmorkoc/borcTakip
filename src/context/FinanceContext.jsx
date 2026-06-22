@@ -110,6 +110,56 @@ export function FinanceProvider({ children }) {
         }
       },
 
+      dismissProjectedCard: async (sourceCardId, targetMonth) => {
+        const entry = { kind: 'card', targetMonth, sourceId: sourceCardId }
+        const backup = state.dismissedProjections || []
+        setState((s) => ({
+          ...s,
+          dismissedProjections: [
+            ...(s.dismissedProjections || []).filter(
+              (d) =>
+                !(
+                  d.kind === 'card' &&
+                  d.targetMonth === targetMonth &&
+                  d.sourceId === sourceCardId
+                )
+            ),
+            entry,
+          ],
+        }))
+        if (!supabaseEnabled || !userId) return
+        try {
+          await persist(() => financeApi.insertProjectionDismissal(userId, entry))
+        } catch {
+          setState((s) => ({ ...s, dismissedProjections: backup }))
+        }
+      },
+
+      dismissProjectedPayment: async (sourcePaymentId, targetMonth) => {
+        const entry = { kind: 'payment', targetMonth, sourceId: sourcePaymentId }
+        const backup = state.dismissedProjections || []
+        setState((s) => ({
+          ...s,
+          dismissedProjections: [
+            ...(s.dismissedProjections || []).filter(
+              (d) =>
+                !(
+                  d.kind === 'payment' &&
+                  d.targetMonth === targetMonth &&
+                  d.sourceId === sourcePaymentId
+                )
+            ),
+            entry,
+          ],
+        }))
+        if (!supabaseEnabled || !userId) return
+        try {
+          await persist(() => financeApi.insertProjectionDismissal(userId, entry))
+        } catch {
+          setState((s) => ({ ...s, dismissedProjections: backup }))
+        }
+      },
+
       addLoan: async (data) => {
         if (!supabaseEnabled || !userId) {
           setState((s) => ({ ...s, loans: [...s.loans, { id: createId(), ...data }] }))

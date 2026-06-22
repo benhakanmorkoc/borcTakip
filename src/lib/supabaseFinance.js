@@ -17,6 +17,7 @@ function fromCreditCard(row) {
     dueMonth: row.due_month,
     minPaid: Boolean(row.min_paid),
     fullyPaid: Boolean(row.fully_paid),
+    projectedFromCardId: row.projected_from_card_id || null,
   }
 }
 
@@ -29,6 +30,7 @@ function toCreditCard(row, userId) {
     due_month: row.dueMonth,
     min_paid: Boolean(row.minPaid),
     fully_paid: Boolean(row.fullyPaid),
+    projected_from_card_id: row.projectedFromCardId || null,
   }
 }
 
@@ -78,6 +80,7 @@ function fromOtherPayment(row) {
     note: row.note || '',
     paid: Boolean(row.paid),
     isNegativeBalance: Boolean(row.is_negative_balance),
+    projectedFromPaymentId: row.projected_from_payment_id || null,
   }
   if (!payment.isNegativeBalance) {
     payment.isNegativeBalance = isNegativeBalancePayment(payment)
@@ -97,6 +100,7 @@ function toOtherPayment(row, userId) {
     note: row.note || null,
     paid: Boolean(row.paid),
     is_negative_balance: isNegativeBalance,
+    projected_from_payment_id: row.projectedFromPaymentId || null,
   }
 }
 
@@ -142,17 +146,19 @@ async function seedDefaultTypes(userId) {
 }
 
 export async function fetchFinanceState(userId) {
-  const [cards, loans, payments, incomes, types] = await Promise.all([
+  const [cards, loans, payments, incomes, types, dismissals] = await Promise.all([
     supabase.from('credit_cards').select('*').eq('user_id', userId).order('created_at'),
     supabase.from('loans').select('*').eq('user_id', userId).order('created_at'),
     supabase.from('other_payments').select('*').eq('user_id', userId).order('due_date'),
     supabase.from('incomes').select('*').eq('user_id', userId).order('created_at'),
     supabase.from('custom_types').select('*').eq('user_id', userId),
+    supabase.from('projection_dismissals').select('*').eq('user_id', userId),
   ])
 
   for (const res of [cards, loans, payments, incomes, types]) {
     if (res.error) throw res.error
   }
+  if (dismissals.error && dismissals.error.code !== 'PGRST205') throw dismissals.error
 
   let paymentTypes = types.data.filter((t) => t.category === 'payment').map((t) => t.label)
   let incomeTypes = types.data.filter((t) => t.category === 'income').map((t) => t.label)
@@ -173,6 +179,11 @@ export async function fetchFinanceState(userId) {
     incomes: incomes.data.map(fromIncome),
     paymentTypes,
     incomeTypes,
+    dismissedProjections: (dismissals.data || []).map((d) => ({
+      kind: d.kind,
+      targetMonth: d.target_month,
+      sourceId: d.source_id,
+    })),
   })
 }
 
@@ -244,6 +255,7 @@ export const financeApi = {
         due_month: data.dueMonth,
         min_paid: Boolean(data.minPaid),
         fully_paid: Boolean(data.fullyPaid),
+        projected_from_card_id: data.projectedFromCardId || null,
       })
       .eq('id', id)
       .select()
@@ -317,6 +329,7 @@ export const financeApi = {
           Boolean(data.isNegativeBalance) ||
           isNegativeBalancePayment(data) ||
           isNegativeBalanceType(data.type),
+        projected_from_payment_id: data.projectedFromPaymentId || null,
       })
       .eq('id', id)
       .select()
@@ -365,6 +378,19 @@ export const financeApi = {
     const { error } = await supabase
       .from('custom_types')
       .upsert({ user_id: userId, category, label }, { onConflict: 'user_id,category,label' })
+    if (error) throw error
+  },
+
+  async insertProjectionDismissal(userId, { kind, targetMonth, sourceId }) {
+    const { error } = await supabase.from('projection_dismissals').upsert(
+      {
+        user_id: userId,
+        kind,
+        target_month: targetMonth,
+        source_id: sourceId,
+      },
+      { onConflict: 'user_id,kind,target_month,source_id' }
+    )
     if (error) throw error
   },
 }
