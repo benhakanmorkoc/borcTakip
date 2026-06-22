@@ -3,7 +3,7 @@ import { useFinance } from '../context/FinanceContext'
 import { buildMonthlyReport } from '../lib/report'
 import { formatDate, formatMoney, currentYearMonth } from '../lib/format'
 import MonthPicker from '../components/MonthPicker'
-import { TrendingDown, TrendingUp, Scale } from 'lucide-react'
+import { TrendingDown, TrendingUp, Scale, Wallet } from 'lucide-react'
 
 function SummaryCard({ title, amount, tone, icon: Icon }) {
   const toneClass =
@@ -82,7 +82,10 @@ export default function Dashboard() {
     [state, selectedMonth, cariAy]
   )
 
-  const balanceTone = report.balance >= 0 ? 'positive' : 'negative'
+  const monthlyBalance = report.incomeBalance
+  const balanceTone = monthlyBalance >= 0 ? 'positive' : 'negative'
+  const paidRegular =
+    report.totalCardMinPaid + report.totalLoanPaid + report.totalOtherPaid
 
   const debtRows = [
     { label: 'Cari ay kart min. ödeme', value: report.totalCardMinPayment },
@@ -99,26 +102,27 @@ export default function Dashboard() {
         <MonthPicker value={selectedMonth} onChange={setSelectedMonth} />
       </div>
 
-      <div className="grid grid-cols-1 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <SummaryCard title="Toplam Gelir" amount={report.totalIncome} tone="positive" icon={TrendingUp} />
-        <SummaryCard title="Kalan Gider" amount={report.totalExpenses} tone="negative" icon={TrendingDown} />
-        {report.totalPaidExpenses > 0 && (
-          <div className="card px-4 py-3 text-sm text-gray-600">
+        <SummaryCard title="Giderler" amount={report.totalMinAmount} tone="negative" icon={TrendingDown} />
+        <SummaryCard title="Ödenecek" amount={report.remainingMinAmount} tone="negative" icon={Wallet} />
+        {paidRegular > 0 && (
+          <div className="card px-4 py-3 text-sm text-gray-600 sm:col-span-2">
             Bu ay ödenen:{' '}
-            <span className="font-semibold text-brand-700">{formatMoney(report.totalPaidExpenses)}</span>
+            <span className="font-semibold text-brand-700">{formatMoney(paidRegular)}</span>
           </div>
         )}
-        <div className={`card p-4 ${report.balance >= 0 ? 'ring-2 ring-brand-200' : 'ring-2 ring-red-200'}`}>
+        <div className={`card p-4 sm:col-span-2 ${monthlyBalance >= 0 ? 'ring-2 ring-brand-200' : 'ring-2 ring-red-200'}`}>
           <div className="mb-2 flex items-center gap-2 text-gray-500">
             <Scale size={16} />
             <span className="text-xs font-semibold uppercase tracking-wide">Aylık Bakiye</span>
           </div>
           <p className={`text-2xl font-bold ${balanceTone === 'positive' ? 'money-positive' : 'money-negative'}`}>
-            {report.balance >= 0 ? '+' : ''}
-            {formatMoney(report.balance)}
+            {monthlyBalance >= 0 ? '+' : ''}
+            {formatMoney(monthlyBalance)}
           </p>
           <p className="mt-1 text-xs text-gray-500">
-            {report.balance >= 0 ? 'Bu ay gelirler giderleri karşılıyor.' : 'Bu ay giderler geliri aşıyor.'}
+            {monthlyBalance >= 0 ? 'Bu ay gelirler giderleri karşılıyor.' : 'Bu ay giderler geliri aşıyor.'}
           </p>
         </div>
       </div>
