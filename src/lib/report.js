@@ -2,17 +2,18 @@ import {
   compareYearMonth,
   currentYearMonth,
   formatMoney,
-  monthDiff,
   shiftYearMonth,
   yearMonthFromDate,
 } from './format'
 import {
   getLoanEndMonth,
   getLoanStartMonth,
+  getLoanInstallmentForMonth,
   getPaymentsRemaining,
-  isLoanActiveInMonth,
   isLoanClosed,
+  isLoanInstallmentPaid,
   loanForwardTotal,
+  loanHasInstallmentInMonth,
   loanMonthlyDue,
 } from './loanUtils'
 
@@ -21,9 +22,19 @@ function creditCardDueAmount(card) {
   return Number(card.minPayment) || 0
 }
 
+function creditCardPaidAmount(card) {
+  if (card.fullyPaid || card.minPaid) return Number(card.minPayment) || 0
+  return 0
+}
+
 function otherDueAmount(payment) {
   if (payment.paid) return 0
   return Number(payment.amount) || 0
+}
+
+function otherPaidAmount(payment) {
+  if (payment.paid) return Number(payment.amount) || 0
+  return 0
 }
 
 function paidLabel(card) {
@@ -32,18 +43,115 @@ function paidLabel(card) {
   return null
 }
 
+function monthHasCardData(state, yearMonth) {
+  return state.creditCards.some((c) => c.dueMonth === yearMonth)
+}
+
+function monthHasIncomeData(state, yearMonth) {
+  return state.incomes.some((i) => i.month === yearMonth)
+}
+
+function monthHasOtherData(state, yearMonth) {
+  return state.otherPayments.some((p) => yearMonthFromDate(p.dueDate) === yearMonth)
+}
+
+/** Cari ay dışında veri yoksa, cari aydaki kalemleri tahmini olarak taşır */
+export function buildProjectedState(state, targetMonth, anchorMonth = currentYearMonth()) {
+  if (compareYearMonth(targetMonth, anchorMonth) <= 0) {
+    return { state, isProjected: false, projectedParts: [] }
+  }
+
+  const projectedParts = []
+  let next = { ...state }
+
+  if (!monthHasCardData(state, targetMonth) && monthHasCardData(state, anchorMonth)) {
+    projectedParts.push('cards')
+    const anchorCards = state.creditCards.filter((c) => c.dueMonth === anchorMonth)
+    next = {
+      ...next,
+      creditCards: [
+        ...next.creditCards,
+        ...anchorCards.map((c) => ({
+          ...c,
+          id: `proj-${c.id}-${targetMonth}`,
+          dueMonth: targetMonth,
+          minPaid: false,
+          fullyPaid: false,
+        })),
+      ],
+    }
+  }
+
+  if (!monthHasIncomeData(state, targetMonth) && monthHasIncomeData(state, anchorMonth)) {
+    projectedParts.push('income')
+    const anchorIncomes = state.incomes.filter((i) => i.month === anchorMonth)
+    next = {
+      ...next,
+      incomes: [
+        ...next.incomes,
+        ...anchorIncomes.map((i) => ({
+          ...i,
+          id: `proj-${i.id}-${targetMonth}`,
+          month: targetMonth,
+        })),
+      ],
+    }
+  }
+
+  if (!monthHasOtherData(state, targetMonth) && monthHasOtherData(state, anchorMonth)) {
+    projectedParts.push('other')
+    const anchorOthers = state.otherPayments.filter((p) => yearMonthFromDate(p.dueDate) === anchorMonth)
+    next = {
+      ...next,
+      otherPayments: [
+        ...next.otherPayments,
+        ...anchorOthers.map((p) => {
+          const day = p.dueDate?.length >= 10 ? p.dueDate.slice(8, 10) : '01'
+          return {
+            ...p,
+            id: `proj-${p.id}-${targetMonth}`,
+            dueDate: `${targetMonth}-${day}`,
+            paid: false,
+          }
+        }),
+      ],
+    }
+  }
+
+  return { state: next, isProjected: projectedParts.length > 0, projectedParts }
+}
+
+export function buildHomeReport(state, yearMonth, cariAy = currentYearMonth()) {
+  const { state: effectiveState, isProjected, projectedParts } = buildProjectedState(
+    state,
+    yearMonth,
+    cariAy
+  )
+  const report = buildMonthlyReport(effectiveState, yearMonth, yearMonth)
+  return {
+    ...report,
+    isProjected,
+    projectedParts,
+    projectedFrom: isProjected ? cariAy : null,
+  }
+}
+
 export function buildMonthlyReport(state, yearMonth, referenceMonth = yearMonth) {
   const creditCardItems = state.creditCards
     .filter((c) => c.dueMonth === yearMonth)
     .map((c) => {
+      const amount = Number(c.minPayment) || 0
       const dueAmount = creditCardDueAmount(c)
+      const paidAmount = creditCardPaidAmount(c)
+      const paid = Boolean(c.fullyPaid || c.minPaid)
       return {
         id: c.id,
         category: 'Kredi Kartı',
         label: c.bankName,
-        amount: Number(c.minPayment) || 0,
+        amount,
         dueAmount,
-        paid: Boolean(c.fullyPaid || c.minPaid),
+        paidAmount,
+        paid,
         paidLabel: paidLabel(c),
         detail: `Toplam borç: ${formatMoney(c.totalDebt)}`,
         sortKey: 1,
@@ -53,19 +161,22 @@ export function buildMonthlyReport(state, yearMonth, referenceMonth = yearMonth)
   const activeLoans = state.loans.filter((l) => !isLoanClosed(l, yearMonth))
 
   const loanItems = activeLoans
-    .filter((l) => isLoanActiveInMonth(l, yearMonth))
+    .filter((l) => loanHasInstallmentInMonth(l, yearMonth))
     .map((l) => {
       const paymentsLeft = getPaymentsRemaining(l, yearMonth)
+      const amount = getLoanInstallmentForMonth(l, yearMonth)
       const dueAmount = loanMonthlyDue(l, yearMonth, referenceMonth)
       const forwardTotal = loanForwardTotal(l, yearMonth, referenceMonth)
-      const paid = yearMonth === referenceMonth && Boolean(l.installmentPaid)
+      const paid = isLoanInstallmentPaid(l, yearMonth, referenceMonth)
+      const paidAmount = paid ? amount : 0
       return {
         id: l.id,
         category: 'Banka Kredisi',
         label: l.bankName,
-        amount: Number(l.monthlyPayment) || 0,
-        monthlyAmount: Number(l.monthlyPayment) || 0,
+        amount,
+        monthlyAmount: amount,
         dueAmount,
+        paidAmount,
         forwardTotal,
         paid,
         paidLabel: paid ? 'Taksit ödendi' : null,
@@ -76,17 +187,22 @@ export function buildMonthlyReport(state, yearMonth, referenceMonth = yearMonth)
 
   const otherItems = state.otherPayments
     .filter((p) => yearMonthFromDate(p.dueDate) === yearMonth)
-    .map((p) => ({
-      id: p.id,
-      category: p.type,
-      label: p.name || p.type,
-      amount: Number(p.amount) || 0,
-      dueAmount: otherDueAmount(p),
-      paid: Boolean(p.paid),
-      paidLabel: p.paid ? 'Ödendi' : null,
-      detail: p.dueDate,
-      sortKey: 3,
-    }))
+    .map((p) => {
+      const amount = Number(p.amount) || 0
+      const paid = Boolean(p.paid)
+      return {
+        id: p.id,
+        category: p.type,
+        label: p.name || p.type,
+        amount,
+        dueAmount: otherDueAmount(p),
+        paidAmount: otherPaidAmount(p),
+        paid,
+        paidLabel: paid ? 'Ödendi' : null,
+        detail: p.dueDate,
+        sortKey: 3,
+      }
+    })
 
   const incomeItems = state.incomes
     .filter((i) => i.month === yearMonth)
@@ -99,42 +215,68 @@ export function buildMonthlyReport(state, yearMonth, referenceMonth = yearMonth)
     }))
 
   const allExpenses = [...creditCardItems, ...loanItems, ...otherItems]
+
+  const totalCardMinGross = creditCardItems.reduce((s, i) => s + i.amount, 0)
+  const totalCardMinPaid = creditCardItems.reduce((s, i) => s + i.paidAmount, 0)
   const totalCardMinPayment = creditCardItems.reduce((s, i) => s + i.dueAmount, 0)
+
   const totalCardPayoff = state.creditCards.reduce(
     (s, c) => s + (c.fullyPaid ? 0 : Number(c.totalDebt) || 0),
     0
   )
+
+  const totalLoanGross = loanItems.reduce((s, i) => s + i.amount, 0)
+  const totalLoanPaid = loanItems.reduce((s, i) => s + i.paidAmount, 0)
   const totalLoanInstallment = loanItems.reduce((s, i) => s + i.dueAmount, 0)
   const totalLoanForward = activeLoans.reduce(
     (s, l) => s + loanForwardTotal(l, yearMonth, referenceMonth),
     0
   )
   const totalLoanPayoff = activeLoans.reduce((s, l) => s + (Number(l.payoffAmount) || 0), 0)
+
+  const totalOtherGross = otherItems.reduce((s, i) => s + i.amount, 0)
+  const totalOtherPaid = otherItems.reduce((s, i) => s + i.paidAmount, 0)
   const totalOtherPayment = otherItems.reduce((s, i) => s + i.dueAmount, 0)
 
-  const totalExpenses = totalCardMinPayment + totalLoanInstallment + totalOtherPayment
-  const totalPaidExpenses = allExpenses.reduce((s, i) => s + (i.paid ? i.amount : 0), 0)
+  const totalMinAmount = totalCardMinGross + totalLoanGross + totalOtherGross
+  const totalPaidAmount = totalCardMinPaid + totalLoanPaid + totalOtherPaid
+  const remainingMinAmount = totalMinAmount - totalPaidAmount
+  const payableAmount = remainingMinAmount
+  const remainingTotalDebt = totalCardPayoff + totalLoanPayoff
+
+  const totalExpenses = payableAmount
+  const totalPaidExpenses = totalPaidAmount
 
   const totalIncome = incomeItems.reduce((s, i) => s + i.amount, 0)
-  const balance = totalIncome - totalExpenses
+  const balance = totalIncome - payableAmount
 
   return {
     yearMonth,
     expenses: allExpenses,
     incomes: incomeItems,
+    totalCardMinGross,
+    totalCardMinPaid,
     totalCardMinPayment,
     totalCardPayoff,
+    totalLoanGross,
+    totalLoanPaid,
     totalLoanInstallment,
     totalLoanForward,
     totalLoanPayoff,
+    totalOtherGross,
+    totalOtherPaid,
     totalOtherPayment,
+    totalMinAmount,
+    totalPaidAmount,
+    remainingMinAmount,
+    payableAmount,
+    remainingTotalDebt,
     totalExpenses,
     totalPaidExpenses,
     totalIncome,
     balance,
     totalDebt: totalCardPayoff,
-    totalLoanPayoff,
-    grandTotalDebt: totalCardPayoff + totalLoanPayoff,
+    grandTotalDebt: remainingTotalDebt,
   }
 }
 
@@ -144,7 +286,7 @@ function formatMonthShort(yearMonth) {
 }
 
 function collectMonthsFromState(state, referenceMonth) {
-  const months = new Set([referenceMonth])
+  const months = new Set([referenceMonth, currentYearMonth()])
 
   state.creditCards.forEach((c) => c.dueMonth && months.add(c.dueMonth))
   state.incomes.forEach((i) => i.month && months.add(i.month))
@@ -161,6 +303,9 @@ function collectMonthsFromState(state, referenceMonth) {
       months.add(cur)
       cur = shiftYearMonth(cur, 1)
     }
+    ;(l.futureInstallments || []).forEach((row) => {
+      if (row.month) months.add(row.month)
+    })
   })
 
   return [...months].sort(compareYearMonth)
@@ -181,30 +326,31 @@ export function buildChartMonths(state, referenceMonth = currentYearMonth()) {
   return result
 }
 
-export function buildMultiMonthChartData(state, referenceMonth = currentYearMonth()) {
-  return buildChartMonths(state, referenceMonth).map((yearMonth) => {
-    const report = buildMonthlyReport(state, yearMonth, yearMonth)
+export function buildMultiMonthChartData(state, cariAy = currentYearMonth()) {
+  return buildChartMonths(state, cariAy).map((yearMonth) => {
+    const homeReport = buildHomeReport(state, yearMonth, cariAy)
     return {
       yearMonth,
       monthLabel: yearMonth.slice(5) + '/' + yearMonth.slice(2, 4),
-      gelir: report.totalIncome,
-      kartMin: report.totalCardMinPayment,
-      krediTaksit: report.totalLoanInstallment,
-      digerOdeme: report.totalOtherPayment,
-      toplamGider: report.totalExpenses,
-      bakiye: report.totalIncome - report.totalExpenses,
+      gelir: homeReport.totalIncome,
+      kartMin: homeReport.totalCardMinGross,
+      krediTaksit: homeReport.totalLoanGross,
+      digerOdeme: homeReport.totalOtherGross,
+      toplamGider: homeReport.totalMinAmount,
+      odenecek: homeReport.payableAmount,
+      bakiye: homeReport.balance,
+      isProjected: homeReport.isProjected,
     }
   })
 }
 
-export function findFirstSurplusMonth(state, referenceMonth = currentYearMonth()) {
-  const months = buildChartMonths(state, referenceMonth)
+export function findFirstSurplusMonth(state, cariAy = currentYearMonth()) {
+  const months = buildChartMonths(state, cariAy)
   for (const yearMonth of months) {
-    if (compareYearMonth(yearMonth, referenceMonth) < 0) continue
-    const report = buildMonthlyReport(state, yearMonth, yearMonth)
-    const gider = report.totalExpenses
-    if (report.totalIncome > gider) {
-      return { yearMonth, report: { ...report, balance: report.totalIncome - gider } }
+    if (compareYearMonth(yearMonth, cariAy) < 0) continue
+    const report = buildHomeReport(state, yearMonth, cariAy)
+    if (report.totalIncome > report.payableAmount) {
+      return { yearMonth, report }
     }
   }
   return null

@@ -51,11 +51,30 @@ export function isLoanClosed(loan, viewMonth) {
   return getPaymentsRemaining(loan, viewMonth) === 0
 }
 
+/** Seçili ayda manuel veya otomatik taksit tutarı */
+export function getLoanInstallmentForMonth(loan, yearMonth) {
+  const manual = (loan.futureInstallments || []).find((r) => r.month === yearMonth)
+  if (manual) return Number(manual.amount) || 0
+  if (isLoanActiveInMonth(loan, yearMonth)) return Number(loan.monthlyPayment) || 0
+  return 0
+}
+
+export function isLoanInstallmentPaid(loan, yearMonth, referenceMonth = yearMonth) {
+  const manual = (loan.futureInstallments || []).find((r) => r.month === yearMonth)
+  if (manual) return Boolean(manual.paid)
+  return yearMonth === referenceMonth && Boolean(loan.installmentPaid)
+}
+
+export function loanHasInstallmentInMonth(loan, yearMonth) {
+  return getLoanInstallmentForMonth(loan, yearMonth) > 0
+}
+
 /** Seçili ayın tek taksit tutarı */
 export function loanMonthlyDue(loan, viewMonth, referenceMonth = viewMonth) {
-  if (!isLoanActiveInMonth(loan, viewMonth)) return 0
-  if (viewMonth === referenceMonth && loan.installmentPaid) return 0
-  return Number(loan.monthlyPayment) || 0
+  const amount = getLoanInstallmentForMonth(loan, viewMonth)
+  if (amount <= 0) return 0
+  if (isLoanInstallmentPaid(loan, viewMonth, referenceMonth)) return 0
+  return amount
 }
 
 /** Seçili aydan itibaren kalan tüm taksitlerin toplamı */

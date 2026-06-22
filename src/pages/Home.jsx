@@ -1,202 +1,237 @@
-import { useMemo } from 'react'
-import { useFinance } from '../context/FinanceContext'
-import {
-  buildMultiMonthChartData,
-  buildMonthlyReport,
-  findFirstSurplusMonth,
-} from '../lib/report'
-import { formatMoney, formatMonthLabel } from '../lib/format'
-import MonthPicker from '../components/MonthPicker'
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Legend,
-  ReferenceLine,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts'
-import { TrendingUp, CalendarCheck } from 'lucide-react'
-
-function ChartTooltip({ active, payload, label }) {
-  if (!active || !payload?.length) return null
-  return (
-    <div className="rounded-xl border border-gray-100 bg-white p-3 text-xs shadow-lg">
-      <p className="mb-2 font-semibold text-gray-900">{label}</p>
-      {payload.map((entry) => (
-        <p key={entry.dataKey} style={{ color: entry.color }} className="flex justify-between gap-4">
-          <span>{entry.name}</span>
-          <span className="font-medium">{formatMoney(entry.value)}</span>
-        </p>
-      ))}
-    </div>
-  )
-}
-
-export default function Home() {
-  const { state, selectedMonth, setSelectedMonth } = useFinance()
-
-  const chartData = useMemo(() => buildMultiMonthChartData(state), [state])
-  const surplus = useMemo(() => findFirstSurplusMonth(state), [state])
-  const currentReport = useMemo(
-    () => buildMonthlyReport(state, selectedMonth, selectedMonth),
-    [state, selectedMonth]
-  )
-
-  const monthlyGider =
-    currentReport.totalCardMinPayment +
-    currentReport.totalLoanInstallment +
-    currentReport.totalOtherPayment
-
-  return (
-    <div className="space-y-4">
-      <div>
-        <h2 className="text-lg font-bold text-gray-900">Ana Sayfa</h2>
-        <p className="text-sm text-gray-500">Ay ay gelir ve gider karşılaştırması</p>
-      </div>
-
-      {surplus ? (
-        <div className="card flex items-start gap-3 border-brand-200 bg-brand-50 p-4">
-          <CalendarCheck className="shrink-0 text-brand-700" size={22} />
-          <div>
-            <p className="font-semibold text-brand-900">İlk fazla ay</p>
-            <p className="mt-1 text-sm text-brand-800 capitalize">
-              {formatMonthLabel(surplus.yearMonth)} — gelir giderleri{' '}
-              <strong>{formatMoney(surplus.report.balance)}</strong> geçiyor
-            </p>
-          </div>
-        </div>
-      ) : (
-        <div className="card p-4 text-sm text-gray-500">
-          Girilen verilere göre gelirin giderleri geçtiği bir ay henüz yok. Gelecek aylar için gelir ve
-          gider girişi yaparak projeksiyonu güncelleyebilirsiniz.
-        </div>
-      )}
-
-      <div className="card p-4">
-        <MonthPicker value={selectedMonth} onChange={setSelectedMonth} />
-        <div className="mt-3 grid grid-cols-1 gap-2 text-xs sm:grid-cols-3">
-          <div className="rounded-xl bg-brand-50 p-2.5">
-            <p className="text-gray-500">Seçili ay gelir</p>
-            <p className="font-bold text-brand-700">{formatMoney(currentReport.totalIncome)}</p>
-          </div>
-          <div className="rounded-xl bg-red-50 p-2.5">
-            <p className="text-gray-500">Seçili ay gider</p>
-            <p className="font-bold text-danger">{formatMoney(monthlyGider)}</p>
-            <div className="mt-1 space-y-0.5 text-[10px] text-gray-500">
-              <p className="flex justify-between gap-2">
-                <span>Kart min. ödeme</span>
-                <span className="font-medium text-gray-700">
-                  {formatMoney(currentReport.totalCardMinPayment)}
-                </span>
-              </p>
-              <p className="flex justify-between gap-2">
-                <span>Kredi taksit</span>
-                <span className="font-medium text-gray-700">
-                  {formatMoney(currentReport.totalLoanInstallment)}
-                </span>
-              </p>
-              {currentReport.totalOtherPayment > 0 && (
-                <p className="flex justify-between gap-2">
-                  <span>Diğer ödeme</span>
-                  <span className="font-medium text-gray-700">
-                    {formatMoney(currentReport.totalOtherPayment)}
-                  </span>
-                </p>
-              )}
-            </div>
-          </div>
-          <div className="rounded-xl bg-amber-50 p-2.5">
-            <p className="text-gray-500">Toplam borç / kapama</p>
-            <p className="font-bold text-amber-900">{formatMoney(currentReport.grandTotalDebt)}</p>
-            <div className="mt-1 space-y-0.5 text-[10px] text-gray-500">
-              <p className="flex justify-between gap-2">
-                <span>Kart toplam borç</span>
-                <span className="font-medium text-gray-700">
-                  {formatMoney(currentReport.totalCardPayoff)}
-                </span>
-              </p>
-              <p className="flex justify-between gap-2">
-                <span>Kredi kapama</span>
-                <span className="font-medium text-gray-700">
-                  {formatMoney(currentReport.totalLoanPayoff)}
-                </span>
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="card p-3">
-        <div className="mb-3 flex items-center gap-2 px-1">
-          <TrendingUp size={16} className="text-brand-700" />
-          <h3 className="text-sm font-semibold text-gray-900">Aylık karşılaştırma</h3>
-        </div>
-        <div className="h-72 w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chartData} margin={{ top: 8, right: 4, left: -8, bottom: 0 }} barGap={4} barCategoryGap="24%">
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-              <XAxis
-                dataKey="monthLabel"
-                tick={{ fontSize: 10, fill: '#6b7280' }}
-                axisLine={false}
-                tickLine={false}
-              />
-              <YAxis
-                tick={{ fontSize: 10, fill: '#6b7280' }}
-                axisLine={false}
-                tickLine={false}
-                tickFormatter={(v) => (v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v)}
-              />
-              <Tooltip content={<ChartTooltip />} />
-              <Legend wrapperStyle={{ fontSize: '10px', paddingTop: '8px' }} iconSize={8} />
-              <ReferenceLine y={0} stroke="#e5e7eb" />
-              <Bar dataKey="gelir" name="Gelir" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={28} />
-              <Bar dataKey="toplamGider" name="Gider" fill="#ef4444" radius={[4, 4, 0, 0]} maxBarSize={28} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
-
-      <div className="card overflow-hidden">
-        <div className="border-b border-gray-100 px-4 py-3">
-          <h3 className="text-sm font-semibold text-gray-900">Ay bazlı tablo</h3>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-gray-50 text-gray-500">
-              <tr>
-                <th className="px-3 py-2 font-semibold">Ay</th>
-                <th className="px-3 py-2 font-semibold">Gelir</th>
-                <th className="px-3 py-2 font-semibold">Gider</th>
-                <th className="px-3 py-2 font-semibold">Bakiye</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {chartData.map((row) => {
-                const isSurplus = row.bakiye > 0
-                const isFirstSurplus = surplus?.yearMonth === row.yearMonth
-                return (
-                  <tr
-                    key={row.yearMonth}
-                    className={isFirstSurplus ? 'bg-brand-50' : isSurplus ? 'bg-green-50/50' : ''}
-                  >
-                    <td className="px-3 py-2 font-medium capitalize">{formatMonthLabel(row.yearMonth)}</td>
-                    <td className="px-3 py-2 text-brand-700">{formatMoney(row.gelir)}</td>
-                    <td className="px-3 py-2 text-danger">{formatMoney(row.toplamGider)}</td>
-                    <td className={`px-3 py-2 font-semibold ${row.bakiye >= 0 ? 'text-brand-700' : 'text-danger'}`}>
-                      {row.bakiye >= 0 ? '+' : ''}
-                      {formatMoney(row.bakiye)}
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  )
-}
+import { useMemo } from 'react'
+import { useFinance } from '../context/FinanceContext'
+import {
+  buildMultiMonthChartData,
+  buildHomeReport,
+  findFirstSurplusMonth,
+} from '../lib/report'
+import { currentYearMonth, formatMoney, formatMonthLabel } from '../lib/format'
+import MonthPicker from '../components/MonthPicker'
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Legend,
+  ReferenceLine,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts'
+import { TrendingUp, CalendarCheck, Info } from 'lucide-react'
+
+function ChartTooltip({ active, payload, label }) {
+  if (!active || !payload?.length) return null
+  return (
+    <div className="rounded-xl border border-gray-100 bg-white p-3 text-xs shadow-lg">
+      <p className="mb-2 font-semibold text-gray-900">{label}</p>
+      {payload.map((entry) => (
+        <p key={entry.dataKey} style={{ color: entry.color }} className="flex justify-between gap-4">
+          <span>{entry.name}</span>
+          <span className="font-medium">{formatMoney(entry.value)}</span>
+        </p>
+      ))}
+    </div>
+  )
+}
+
+function SummaryField({ label, value, tone = 'neutral', sub }) {
+  const toneClass =
+    tone === 'positive'
+      ? 'text-brand-700'
+      : tone === 'negative'
+        ? 'text-danger'
+        : tone === 'warning'
+          ? 'text-amber-900'
+          : 'text-gray-900'
+  return (
+    <div className="rounded-xl bg-gray-50 p-2.5">
+      <p className="text-gray-500">{label}</p>
+      <p className={`font-bold ${toneClass}`}>{formatMoney(value)}</p>
+      {sub}
+    </div>
+  )
+}
+
+export default function Home() {
+  const { state, selectedMonth, setSelectedMonth } = useFinance()
+  const cariAy = currentYearMonth()
+
+  const chartData = useMemo(() => buildMultiMonthChartData(state, cariAy), [state, cariAy])
+  const surplus = useMemo(() => findFirstSurplusMonth(state, cariAy), [state, cariAy])
+  const report = useMemo(
+    () => buildHomeReport(state, selectedMonth, cariAy),
+    [state, selectedMonth, cariAy]
+  )
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <h2 className="text-lg font-bold text-gray-900">Ana Sayfa</h2>
+        <p className="text-sm text-gray-500">Ay ay gelir ve gider karşılaştırması</p>
+      </div>
+
+      {surplus ? (
+        <div className="card flex items-start gap-3 border-brand-200 bg-brand-50 p-4">
+          <CalendarCheck className="shrink-0 text-brand-700" size={22} />
+          <div>
+            <p className="font-semibold text-brand-900">İlk fazla ay</p>
+            <p className="mt-1 text-sm text-brand-800 capitalize">
+              {formatMonthLabel(surplus.yearMonth)} — gelir giderleri{' '}
+              <strong>{formatMoney(surplus.report.balance)}</strong> geçiyor
+              {surplus.report.isProjected && (
+                <span className="ml-1 text-[10px] font-normal text-brand-700">(tahmini)</span>
+              )}
+            </p>
+          </div>
+        </div>
+      ) : (
+        <div className="card p-4 text-sm text-gray-500">
+          Girilen verilere göre gelirin giderleri geçtiği bir ay henüz yok. Gelecek aylar için gelir ve
+          gider girişi yaparak projeksiyonu güncelleyebilirsiniz.
+        </div>
+      )}
+
+      <div className="card p-4">
+        <MonthPicker value={selectedMonth} onChange={setSelectedMonth} />
+
+        {report.isProjected && (
+          <div className="mt-2 flex items-start gap-2 rounded-xl bg-blue-50 px-3 py-2 text-[11px] text-blue-800">
+            <Info size={14} className="mt-0.5 shrink-0" />
+            <p>
+              <strong>Tahmini</strong> — {formatMonthLabel(report.projectedFrom)} ayındaki değerler
+              kullanılıyor. Bu ay geldiğinde gerçek tutarları manuel güncelleyebilirsiniz.
+            </p>
+          </div>
+        )}
+
+        <div className="mt-3 rounded-xl bg-brand-50 p-2.5 text-xs">
+          <p className="text-gray-500">Seçili ay gelir</p>
+          <p className="font-bold text-brand-700">{formatMoney(report.totalIncome)}</p>
+        </div>
+
+        <div className="mt-2 grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
+          <SummaryField label="Toplam Min Tutar" value={report.totalMinAmount} />
+          <SummaryField label="Ödenen Tutar" value={report.totalPaidAmount} tone="positive" />
+          <SummaryField label="Kalan min Tutar" value={report.remainingMinAmount} tone="negative" />
+          <SummaryField
+            label="Kalan Toplam Borç"
+            value={report.remainingTotalDebt}
+            tone="warning"
+          />
+        </div>
+
+        <div className="mt-2 rounded-xl border border-red-100 bg-red-50 p-2.5 text-xs">
+          <p className="text-gray-500">Ödenecek tutar</p>
+          <p className="text-lg font-bold text-danger">{formatMoney(report.payableAmount)}</p>
+          <div className="mt-1 space-y-0.5 text-[10px] text-gray-500">
+            <p className="flex justify-between gap-2">
+              <span>Kart min. ödeme (brüt)</span>
+              <span className="font-medium text-gray-700">
+                {formatMoney(report.totalCardMinGross)}
+                {report.totalCardMinPaid > 0 && (
+                  <span className="text-brand-600"> · ödenen {formatMoney(report.totalCardMinPaid)}</span>
+                )}
+              </span>
+            </p>
+            <p className="flex justify-between gap-2">
+              <span>Kredi taksit</span>
+              <span className="font-medium text-gray-700">
+                {formatMoney(report.totalLoanGross)}
+                {report.totalLoanPaid > 0 && (
+                  <span className="text-brand-600"> · ödenen {formatMoney(report.totalLoanPaid)}</span>
+                )}
+              </span>
+            </p>
+            {report.totalOtherGross > 0 && (
+              <p className="flex justify-between gap-2">
+                <span>Diğer ödeme</span>
+                <span className="font-medium text-gray-700">
+                  {formatMoney(report.totalOtherGross)}
+                  {report.totalOtherPaid > 0 && (
+                    <span className="text-brand-600"> · ödenen {formatMoney(report.totalOtherPaid)}</span>
+                  )}
+                </span>
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="card p-3">
+        <div className="mb-3 flex items-center gap-2 px-1">
+          <TrendingUp size={16} className="text-brand-700" />
+          <h3 className="text-sm font-semibold text-gray-900">Aylık karşılaştırma</h3>
+        </div>
+        <div className="h-72 w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={chartData} margin={{ top: 8, right: 4, left: -8, bottom: 0 }} barGap={4} barCategoryGap="24%">
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+              <XAxis
+                dataKey="monthLabel"
+                tick={{ fontSize: 10, fill: '#6b7280' }}
+                axisLine={false}
+                tickLine={false}
+              />
+              <YAxis
+                tick={{ fontSize: 10, fill: '#6b7280' }}
+                axisLine={false}
+                tickLine={false}
+                tickFormatter={(v) => (v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v)}
+              />
+              <Tooltip content={<ChartTooltip />} />
+              <Legend wrapperStyle={{ fontSize: '10px', paddingTop: '8px' }} iconSize={8} />
+              <ReferenceLine y={0} stroke="#e5e7eb" />
+              <Bar dataKey="gelir" name="Gelir" fill="#10b981" radius={[4, 4, 0, 0]} maxBarSize={28} />
+              <Bar dataKey="odenecek" name="Ödenecek" fill="#ef4444" radius={[4, 4, 0, 0]} maxBarSize={28} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      <div className="card overflow-hidden">
+        <div className="border-b border-gray-100 px-4 py-3">
+          <h3 className="text-sm font-semibold text-gray-900">Ay bazlı tablo</h3>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs">
+            <thead className="bg-gray-50 text-gray-500">
+              <tr>
+                <th className="px-3 py-2 font-semibold">Ay</th>
+                <th className="px-3 py-2 font-semibold">Gelir</th>
+                <th className="px-3 py-2 font-semibold">Ödenecek</th>
+                <th className="px-3 py-2 font-semibold">Bakiye</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {chartData.map((row) => {
+                const isSurplus = row.bakiye > 0
+                const isFirstSurplus = surplus?.yearMonth === row.yearMonth
+                return (
+                  <tr
+                    key={row.yearMonth}
+                    className={isFirstSurplus ? 'bg-brand-50' : isSurplus ? 'bg-green-50/50' : ''}
+                  >
+                    <td className="px-3 py-2 font-medium capitalize">
+                      {formatMonthLabel(row.yearMonth)}
+                      {row.isProjected && (
+                        <span className="ml-1 text-[10px] text-blue-600">tahmini</span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2 text-brand-700">{formatMoney(row.gelir)}</td>
+                    <td className="px-3 py-2 text-danger">{formatMoney(row.odenecek)}</td>
+                    <td className={`px-3 py-2 font-semibold ${row.bakiye >= 0 ? 'text-brand-700' : 'text-danger'}`}>
+                      {row.bakiye >= 0 ? '+' : ''}
+                      {formatMoney(row.bakiye)}
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  )
+}
+
